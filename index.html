@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>夏日十四行诗</title>
+    <title>拾光集 - 岁月留影</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* =========================================
-           1. 极简夏日美学变量
+           1. 拾光美学变量 (去季节化的温润色彩)
            ========================================= */
         :root {
-            --bg-base: #F4F9F4; 
-            --text-dark: #2A3B2C; 
-            --text-muted: #829A84; 
-            --accent-green: #739E77; 
+            --bg-base: #F7F9F8; /* 更干净的纸张白 */
+            --text-dark: #2C3631; /* 柔和的深灰绿 */
+            --text-muted: #8B9992; 
+            --accent-color: #8CA192; /* 高级晨雾青，四季皆宜 */
             --glass-bg: rgba(255, 255, 255, 0.65);
             --glass-border: rgba(255, 255, 255, 0.8);
         }
@@ -21,412 +21,333 @@
         body {
             margin: 0; padding: 0;
             font-family: 'Noto Serif SC', 'Songti SC', serif;
-            background: linear-gradient(135deg, var(--bg-base) 0%, #EAF2EA 100%);
+            background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%);
             color: var(--text-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
+            min-height: 100vh; overflow-x: hidden;
             background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* =========================================
-           2. 满血 GPU 硬件加速飘落特效
+           2. 时光光尘特效 (Stardust 替换绿叶)
            ========================================= */
-        #bg-fx {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0;
-            perspective: 1000px;
-        }
-        .leaf {
-            position: absolute; top: -10%;
-            background: var(--accent-green);
-            border-radius: 50% 0 50% 0;
+        #bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; perspective: 1000px; }
+        .mote {
+            position: absolute; bottom: -10%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
             opacity: 0;
             will-change: transform, opacity;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            animation: float linear infinite;
+            animation: floatUp linear infinite;
         }
-        @keyframes float {
-            0% { transform: translate3d(0, -50px, 0) rotate(0deg); opacity: 0; }
-            15% { opacity: 0.4; }
-            85% { opacity: 0.4; }
-            100% { transform: translate3d(20vw, 110vh, 0) rotate(360deg); opacity: 0; }
+        @keyframes floatUp {
+            0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+            20% { opacity: 0.6; }
+            80% { opacity: 0.6; }
+            100% { transform: translate3d(15vw, -110vh, 0) scale(1.2); opacity: 0; }
         }
 
         /* =========================================
-           3. 高级毛玻璃排版 (Glassmorphism)
+           3. UI 组件与排版
            ========================================= */
         header { position: relative; z-index: 10; padding: 60px 20px 30px; text-align: center; }
-        h1 { margin: 0; font-size: 34px; letter-spacing: 6px; color: var(--accent-green); font-weight: bold; text-shadow: 0 2px 10px rgba(115, 158, 119, 0.2); }
+        h1 { margin: 0; font-size: 36px; letter-spacing: 8px; color: var(--text-dark); font-weight: normal; }
 
         .poetry-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            max-width: 680px; margin: 35px auto; padding: 45px 35px;
-            border-radius: 40px; 
-            box-shadow: 0 25px 50px rgba(115, 158, 119, 0.08), inset 0 0 0 1px rgba(255,255,255,0.5);
-            position: relative;
+            background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 30px;
+            max-width: 650px; margin: 30px auto; padding: 40px 35px;
+            box-shadow: 0 20px 40px rgba(140, 161, 146, 0.1), inset 0 0 0 1px rgba(255,255,255,0.5);
         }
-        .poetry-en { font-style: italic; font-size: 15px; color: var(--text-muted); margin-bottom: 15px;}
-        .poetry-zh { font-size: 19px; letter-spacing: 3px; color: var(--text-dark); line-height: 1.9;}
+        .poetry-en { font-style: italic; font-size: 15px; color: var(--text-muted); margin-bottom: 12px; }
+        .poetry-zh { font-size: 18px; letter-spacing: 2px; line-height: 1.8; }
 
         .btn {
-            background: var(--accent-green); color: white; border: none; font-family: inherit;
-            padding: 15px 40px; border-radius: 50px; font-size: 16px; letter-spacing: 2px; cursor: pointer;
-            box-shadow: 0 10px 25px rgba(115, 158, 119, 0.35);
-            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-            -webkit-tap-highlight-color: transparent; /* 消除手机端点击蓝光 */
+            background: var(--accent-color); color: white; border: none; font-family: inherit;
+            padding: 14px 38px; border-radius: 50px; font-size: 15px; letter-spacing: 2px; cursor: pointer;
+            box-shadow: 0 10px 25px rgba(140, 161, 146, 0.3);
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            -webkit-tap-highlight-color: transparent; outline: none;
         }
-        .btn:hover { background: #5c8460; transform: translateY(-4px) scale(1.02); box-shadow: 0 15px 35px rgba(115, 158, 119, 0.45); }
-        .btn:active { transform: translateY(0) scale(0.98); }
-        .btn:disabled { background: #A9BCA9; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn:hover { background: #7A9080; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(140, 161, 146, 0.4); }
+        .btn:active { transform: translateY(0) scale(0.97); }
+        .btn:disabled { background: #B3C0B8; cursor: not-allowed; transform: none; box-shadow: none; }
 
         /* =========================================
-           4. 流畅的瀑布流画廊与✨骨架屏过渡✨
+           4. 瀑布流画廊与骨架屏
            ========================================= */
         .gallery {
-            position: relative; z-index: 10; column-count: 3; column-gap: 30px;
+            position: relative; z-index: 10; column-count: 3; column-gap: 25px;
             padding: 20px 40px 80px; max-width: 1200px; margin: 0 auto;
         }
         .card {
-            break-inside: avoid; margin-bottom: 30px; 
+            break-inside: avoid; margin-bottom: 25px; 
             background: var(--glass-bg); backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border); padding: 12px 12px 24px;
-            border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.03);
-            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            border: 1px solid var(--glass-border); padding: 10px 10px 20px;
+            border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.03);
             animation: fadeInUp 0.8s ease-out backwards;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
         }
         @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 30px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-        .card:hover { transform: translate3d(0, -8px, 0); box-shadow: 0 25px 45px rgba(115, 158, 119, 0.15); }
+        .card:hover { transform: translate3d(0, -6px, 0); box-shadow: 0 20px 40px rgba(140, 161, 146, 0.15); }
 
-        /* 骨架屏与渐显核心逻辑 */
         .card img { 
-            width: 100%; display: block; border-radius: 16px; object-fit: cover; 
-            background: linear-gradient(90deg, #EAF2EA 25%, #FAFCFA 50%, #EAF2EA 75%);
-            background-size: 200% 100%;
-            animation: skeletonLoading 1.5s infinite;
-            min-height: 200px; /* 占位防止跳动 */
-            opacity: 0; transition: opacity 0.6s ease-out; 
+            width: 100%; display: block; border-radius: 14px; object-fit: cover; 
+            background: linear-gradient(90deg, #E8EDE9 25%, #FAFCFA 50%, #E8EDE9 75%);
+            background-size: 200% 100%; animation: skeletonLoading 1.5s infinite;
+            min-height: 200px; opacity: 0; transition: opacity 0.5s ease-out; 
         }
-        .card img.loaded {
-            opacity: 1; animation: none; background: transparent;
-        }
+        .card img.loaded { opacity: 1; animation: none; background: transparent; }
         @keyframes skeletonLoading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-        .card-info { padding-top: 18px; text-align: center; }
-        .card-title { margin: 0; font-size: 17px; font-weight: bold; color: var(--text-dark); }
-        .card-author { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); }
+        .card-info { padding-top: 15px; text-align: center; }
+        .card-title { margin: 0 0 6px; font-size: 16px; font-weight: bold; }
+        .card-author { margin: 0; font-size: 13px; color: var(--text-muted); }
 
         /* =========================================
-           5. 呼吸感弹窗
+           5. 优雅弹窗与轻提示 (Toast)
            ========================================= */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(20, 30, 22, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            position: fixed; inset: 0; background: rgba(25, 30, 27, 0.4); 
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
             z-index: 1000; display: flex; justify-content: center; align-items: center;
-            opacity: 0; visibility: hidden; transition: all 0.4s ease;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         .modal-overlay.show { opacity: 1; visibility: visible; }
         .modal-box {
-            background: rgba(255, 255, 255, 0.95); padding: 45px 35px; border-radius: 35px; 
-            width: 85%; max-width: 400px; text-align: center;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.2); 
-            transform: translate3d(0, 30px, 0) scale(0.95); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(255, 255, 255, 0.98); padding: 40px 30px; border-radius: 28px; 
+            width: 85%; max-width: 360px; text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15); 
+            transform: translate3d(0, 20px, 0) scale(0.95); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .modal-overlay.show .modal-box { transform: translate3d(0, 0, 0) scale(1); }
-        .modal-box h3 { margin: 0 0 30px 0; color: var(--accent-green); font-size: 22px; letter-spacing: 2px;}
+        .modal-box h3 { margin: 0 0 25px 0; color: var(--accent-color); font-size: 20px; letter-spacing: 2px;}
         
         .input-box {
-            width: 100%; box-sizing: border-box; padding: 16px; margin-bottom: 18px; 
-            border: 2px solid #E8F0E6; border-radius: 18px;
-            background: #FAFCFA; color: var(--text-dark); font-family: inherit; font-size: 15px; text-align: center; 
+            width: 100%; box-sizing: border-box; padding: 15px; margin-bottom: 15px; 
+            border: 1px solid #E8EDE9; border-radius: 16px; background: #F7F9F8; 
+            color: var(--text-dark); font-family: inherit; font-size: 14px; text-align: center; 
             outline: none; transition: all 0.3s ease;
         }
-        .input-box:focus { border-color: var(--accent-green); background: white; box-shadow: 0 0 0 4px rgba(115, 158, 119, 0.1); }
+        .input-box:focus { border-color: var(--accent-color); background: white; box-shadow: 0 0 0 3px rgba(140, 161, 146, 0.1); }
 
-        /* =========================================
-           6. 极致丝滑的黑胶唱片
-           ========================================= */
-        .music-player {
-            position: fixed; bottom: 35px; right: 35px; z-index: 999;
-            width: 58px; height: 58px; border-radius: 50%; cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-            will-change: transform, filter; -webkit-transform: translateZ(0); transform: translateZ(0);
-            animation: spin 5s linear infinite;
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease;
+        /* 极致丝滑的 Toast 提示 */
+        .toast {
+            position: fixed; top: 30px; left: 50%; transform: translate(-50%, -20px);
+            background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border); border-radius: 30px;
+            color: var(--text-dark); padding: 12px 24px; font-size: 14px; letter-spacing: 1px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px;
+            opacity: 0; visibility: hidden; z-index: 9999;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .music-player svg { width: 100%; height: 100%; display: block; }
-        .music-player.paused { animation-play-state: paused; filter: grayscale(50%) brightness(0.85); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); }
-        .music-player:hover { transform: scale(1.15) translateZ(0); }
-        @keyframes spin { 0% { transform: rotate(0deg) translateZ(0); } 100% { transform: rotate(360deg) translateZ(0); } }
+        .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 
-        /* =========================================
-           ✨核心升级：移动端极致排版优化✨
-           ========================================= */
-        @media (max-width: 900px) { 
-            .gallery { column-count: 2; padding: 20px 30px; } 
-        }
+        /* 音乐与响应式缩减... */
+        .music-player { position: fixed; bottom: 30px; right: 30px; z-index: 999; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.15); will-change: transform, filter; animation: spin 5s linear infinite; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease; }
+        .music-player.paused { animation-play-state: paused; filter: grayscale(40%) brightness(0.9); }
+        .music-player:hover { transform: scale(1.1); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 900px) { .gallery { column-count: 2; padding: 20px 30px; } }
         @media (max-width: 600px) { 
-            .gallery { column-count: 1; padding: 10px 15px 40px; column-gap: 15px; } 
-            header { padding: 45px 15px 20px; }
-            h1 { font-size: 28px; letter-spacing: 4px; }
-            .poetry-card { padding: 30px 20px; margin: 20px auto; border-radius: 30px; }
-            .poetry-zh { font-size: 16px; line-height: 1.7; }
-            .poetry-en { font-size: 13px; }
-            .btn { padding: 12px 30px; font-size: 15px; }
-            .modal-box { padding: 35px 25px; width: 90%; border-radius: 30px; }
-            .input-box { padding: 14px; font-size: 14px; }
-            .music-player { bottom: 25px; right: 25px; width: 50px; height: 50px; }
+            .gallery { column-count: 1; padding: 10px 20px 40px; column-gap: 20px; } 
+            header { padding: 40px 15px 20px; } h1 { font-size: 30px; }
+            .poetry-card { padding: 25px 20px; border-radius: 25px; }
+            .btn { padding: 12px 32px; } .modal-box { padding: 30px 20px; }
+            .music-player { bottom: 20px; right: 20px; width: 48px; height: 48px; }
+            .toast { width: 80%; justify-content: center; text-align: center; }
         }
     </style>
 </head>
 <body>
 
     <div id="bg-fx"></div>
+    <div id="toast" class="toast"></div>
 
     <header>
-        <h1>夏日十四行诗</h1>
+        <h1>拾光集</h1>
         <div class="poetry-card">
-            <div class="poetry-en">"Shall I compare thee to a summer's day? <br> Thou art more lovely and more temperate..."</div>
-            <div class="poetry-zh">我怎么能够将你比作夏天？<br>你比夏天更美丽温婉。</div>
+            <div class="poetry-en">"We do not remember days, we remember moments."</div>
+            <div class="poetry-zh">时光流转，岁月无言。<br>幸好有些瞬间，被永远定格。</div>
         </div>
-        <button class="btn" onclick="toggleModal(true)">封存夏日时光</button>
+        <button class="btn" onclick="toggleModal(true)">珍藏此刻回忆</button>
     </header>
 
-    <main class="gallery" id="galleryContainer">
-        </main>
+    <main class="gallery" id="galleryContainer"></main>
 
     <div id="uploadModal" class="modal-overlay">
         <div class="modal-box">
-            <h3>致夏日的信</h3>
-            <input type="file" id="photoFile" accept="image/*" class="input-box" style="padding: 12px; border-style: dashed; cursor: pointer;">
-            <input type="text" id="photoTitle" placeholder="为这页回忆写下标题..." class="input-box">
+            <h3>时光信笺</h3>
+            <input type="file" id="photoFile" accept="image/*" class="input-box" style="padding: 10px; border-style: dashed; cursor: pointer;">
+            <input type="text" id="photoTitle" placeholder="给这段回忆起个名字..." class="input-box">
             <input type="text" id="uploaderName" placeholder="你的署名" class="input-box">
-            <div style="display: flex; justify-content: space-between; margin-top: 25px;">
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                 <button class="btn" style="background: transparent; color: var(--text-muted); box-shadow: none;" onclick="toggleModal(false)">收起笔墨</button>
-                <button class="btn" onclick="submitPhoto(event)">投递</button>
+                <button class="btn" onclick="submitPhoto(event)">封存</button>
             </div>
         </div>
     </div>
 
-    <audio id="bgMusic" loop preload="auto">
-        <source src="xvni.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="bgMusic" loop preload="auto"><source src="xvni.mp3" type="audio/mpeg"></audio>
     
-    <div id="musicBtn" class="music-player paused" onclick="toggleMusic()" title="播放/暂停音乐">
+    <div id="musicBtn" class="music-player paused" onclick="toggleMusic()" title="音乐开关">
         <svg viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="49" fill="#1a1a1a" />
             <circle cx="50" cy="50" r="43" fill="none" stroke="#2a2a2a" stroke-width="1.5" />
-            <circle cx="50" cy="50" r="37" fill="none" stroke="#333333" stroke-width="1" />
             <circle cx="50" cy="50" r="31" fill="none" stroke="#252525" stroke-width="1.5" />
-            <circle cx="50" cy="50" r="25" fill="none" stroke="#3a3a3a" stroke-width="1" />
-            <circle cx="50" cy="50" r="18" fill="#739E77" />
-            <circle cx="50" cy="50" r="14" fill="none" stroke="#FAFCFA" stroke-width="0.5" opacity="0.6"/>
+            <circle cx="50" cy="50" r="18" fill="#8CA192" />
             <circle cx="50" cy="50" r="3.5" fill="#FAFCFA" />
         </svg>
     </div>
 
     <script>
         // ==========================================
-        // 🚀 初始化 Supabase (内嵌了你的真实配置)
+        // 🚀 初始化与全局工具
         // ==========================================
         let appSupabase = null;
         try {
             const SUPABASE_URL = 'https://vwuulslskezoerbtnjte.supabase.co'; 
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dXVsc2xza2V6b2VyYnRuanRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjQ1NTQsImV4cCI6MjA5MTMwMDU1NH0.bEBeflj63BjeOD_mv20bD-gIXY8O6NunBOkjp6JtokI';
-            
-            if (window.supabase) {
-                appSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
-        } catch (error) {
-            console.error("初始化出错:", error);
-        }
+            if (window.supabase) appSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch (error) { console.error("初始化出错"); }
+
+        // 轻提示 Toast (替代所有 alert)
+        let toastTimeout;
+        window.showToast = function(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            clearTimeout(toastTimeout);
+            const icon = type === 'error' ? '🍂' : type === 'success' ? '✨' : '💡';
+            toast.innerHTML = `${icon} ${msg}`;
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
+        };
 
         // ==========================================
-        // ✨ 优化：动态响应式的夏日飘落特效
+        // ✨ 氛围特效：时光光尘 (Stardust)
         // ==========================================
-        // 手机端自动降级叶子数量，防止掉帧发热
-        const isMobile = window.innerWidth <= 600;
-        const leafCount = isMobile ? 12 : 25; 
-
+        const leafCount = window.innerWidth <= 600 ? 12 : 25; 
         const frag = document.createDocumentFragment(); 
-        const colors = ['#739E77', '#A3BCA6', '#EAF2EA']; 
         for (let i = 0; i < leafCount; i++) { 
-            let leaf = document.createElement('i');
-            leaf.className = 'leaf';
-            let size = Math.random() * 8 + 6; 
-            leaf.style.width = size + 'px';
-            leaf.style.height = size + 'px';
-            leaf.style.left = Math.random() * 100 + 'vw';
-            leaf.style.background = colors[Math.floor(Math.random() * colors.length)];
-            leaf.style.animationDuration = (Math.random() * 5 + 7) + 's';
-            leaf.style.animationDelay = (Math.random() * 5) + 's';
-            frag.appendChild(leaf);
+            let mote = document.createElement('i');
+            mote.className = 'mote';
+            let size = Math.random() * 6 + 4; 
+            mote.style.width = size + 'px'; mote.style.height = size + 'px';
+            mote.style.left = Math.random() * 100 + 'vw';
+            mote.style.animationDuration = (Math.random() * 6 + 8) + 's';
+            mote.style.animationDelay = (Math.random() * 5) + 's';
+            frag.appendChild(mote);
         }
         document.getElementById('bg-fx').appendChild(frag); 
 
         // ==========================================
-        // 交互功能逻辑
+        // 交互控制
         // ==========================================
-        const bgMusic = document.getElementById('bgMusic');
-        const musicBtn = document.getElementById('musicBtn');
+        const bgMusic = document.getElementById('bgMusic'), musicBtn = document.getElementById('musicBtn'), modal = document.getElementById('uploadModal'), uploaderNameInput = document.getElementById('uploaderName');
         
-        function toggleMusic() {
+        window.toggleMusic = () => {
             if (bgMusic.paused) {
-                let playPromise = bgMusic.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => { musicBtn.classList.remove('paused'); })
-                    .catch(() => { console.warn("音频需要用户交互后播放"); });
-                }
-            } else {
-                bgMusic.pause();
-                musicBtn.classList.add('paused');
-            }
-        }
+                bgMusic.play().then(() => musicBtn.classList.remove('paused')).catch(() => showToast("播放需要先与页面交互哦", "info"));
+            } else { bgMusic.pause(); musicBtn.classList.add('paused'); }
+        };
 
-        const modal = document.getElementById('uploadModal');
-        const uploaderNameInput = document.getElementById('uploaderName');
-
-        function toggleModal(show) {
+        window.toggleModal = (show) => {
             if(show) {
                 modal.classList.add('show');
-                const savedName = localStorage.getItem('myNickname');
-                if (savedName) uploaderNameInput.value = savedName;
-            } else { 
-                modal.classList.remove('show'); 
-            }
-        }
+                if (localStorage.getItem('myNickname')) uploaderNameInput.value = localStorage.getItem('myNickname');
+            } else modal.classList.remove('show'); 
+        };
 
         // ==========================================
-        // ✨ 优化：支持懒加载与过渡动画的瀑布流
+        // ✨ 数据渲染与瀑布流
         // ==========================================
         const galleryContainer = document.getElementById('galleryContainer');
         
-        async function loadPhotos() {
+        window.loadPhotos = async function() {
             if (!appSupabase) return; 
-            galleryContainer.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-muted); font-size: 16px;">正在翻阅夏日日记...</div>';
+            galleryContainer.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-muted);">正在打捞岁月碎片...</div>';
             try {
                 const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 
-                galleryContainer.innerHTML = '';
                 if (data.length === 0) {
-                    galleryContainer.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-muted); font-size: 16px;">日记本还是空的，快去封存第一页夏日时光吧！</div>';
+                    galleryContainer.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-muted);">时光信箱还是空的，去珍藏第一页回忆吧 ✨</div>';
                     return;
                 }
-                data.forEach((photo, index) => {
-                    const delay = index * 0.1; 
-                    // 核心：loading="lazy" 性能优化，onload="this.classList.add('loaded')" 触发渐显
-                    const cardHtml = `
-                        <div class="card" style="animation-delay: ${delay}s">
-                            <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" onload="this.classList.add('loaded')">
-                            <div class="card-info">
-                                <p class="card-title">${photo.title}</p>
-                                <p class="card-author">—— 记录者：${photo.author}</p>
-                            </div>
+                galleryContainer.innerHTML = data.map((photo, i) => `
+                    <div class="card" style="animation-delay: ${i * 0.05}s">
+                        <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" onload="this.classList.add('loaded')">
+                        <div class="card-info">
+                            <p class="card-title">${photo.title}</p>
+                            <p class="card-author">—— 记录者：${photo.author}</p>
                         </div>
-                    `;
-                    galleryContainer.innerHTML += cardHtml;
-                });
+                    </div>
+                `).join('');
             } catch (error) {
-                galleryContainer.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: #d81b60;">糟糕，日记本卡住了，请刷新重试。</div>';
+                galleryContainer.innerHTML = '<div style="text-align: center; color: #d81b60;">网络似乎走丢了，刷新试试吧。</div>';
             }
-        }
-        
+        };
         loadPhotos();
 
         // ==========================================
-        // ✨ 优化：后台线程图像解码 (解决主线程卡顿)
+        // ✨ 极致后台压缩
         // ==========================================
         async function compressImage(file, maxWidth = 1200, quality = 0.8) {
             return new Promise(async (resolve, reject) => {
                 try {
-                    let imgBitmap;
-                    // 使用先进的 createImageBitmap API 移交解码工作给 GPU/后台线程
-                    if (window.createImageBitmap) {
-                        imgBitmap = await createImageBitmap(file);
-                    } else {
-                        // 兼容老浏览器的降级方案
-                        imgBitmap = await new Promise((res, rej) => {
-                            const img = new Image();
-                            img.src = URL.createObjectURL(file);
-                            img.onload = () => { URL.revokeObjectURL(img.src); res(img); };
-                            img.onerror = rej;
-                        });
-                    }
-
-                    let targetWidth = imgBitmap.width;
-                    let targetHeight = imgBitmap.height;
-
-                    if (targetWidth > maxWidth) { 
-                        targetHeight = Math.round(targetHeight * (maxWidth / targetWidth)); 
-                        targetWidth = maxWidth; 
-                    }
-
-                    const canvas = document.createElement('canvas'); 
-                    canvas.width = targetWidth; 
-                    canvas.height = targetHeight;
-                    const ctx = canvas.getContext('2d'); 
+                    let imgBitmap = window.createImageBitmap ? await createImageBitmap(file) : await new Promise((res, rej) => {
+                        const img = new Image(); img.src = URL.createObjectURL(file);
+                        img.onload = () => { URL.revokeObjectURL(img.src); res(img); }; img.onerror = rej;
+                    });
                     
-                    // 启用高质量抗锯齿，保证图片质感
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    
-                    ctx.drawImage(imgBitmap, 0, 0, targetWidth, targetHeight);
-                    
-                    if (imgBitmap.close) imgBitmap.close(); // 及时释放内存
+                    let [w, h] = [imgBitmap.width, imgBitmap.height];
+                    if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
 
-                    canvas.toBlob((blob) => { 
-                        resolve(new File([blob], `img_${Date.now()}.webp`, { type: 'image/webp' })); 
-                    }, 'image/webp', quality);
-                    
-                } catch (error) {
-                    reject(error);
-                }
+                    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d'); 
+                    canvas.width = w; canvas.height = h;
+                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(imgBitmap, 0, 0, w, h);
+                    if (imgBitmap.close) imgBitmap.close();
+
+                    canvas.toBlob(blob => resolve(new File([blob], `img_${Date.now()}.webp`, { type: 'image/webp' })), 'image/webp', quality);
+                } catch (error) { reject(error); }
             });
         }
 
         // ==========================================
-        // 核心投递逻辑
+        // 核心封存逻辑
         // ==========================================
-        async function submitPhoto(event) {
-            if (!appSupabase) return alert("数据库连接失败，请检查网络！");
+        window.submitPhoto = async function(event) {
+            if (!appSupabase) return showToast("未能连接到云端信箱", "error");
             const fileInput = document.getElementById('photoFile'), title = document.getElementById('photoTitle').value, name = uploaderNameInput.value, submitBtn = event.target; 
             
-            if(!fileInput.files[0]) return alert("信封里怎么能没有照片呢？");
-            if(!title) return alert("为这页回忆写个标题吧。");
-            if(!name) return alert("请留下你的署名。");
+            if(!fileInput.files[0]) return showToast("信封里怎么能没有照片呢？", "error");
+            if(!title) return showToast("给这段回忆起个名字吧", "error");
+            if(!name) return showToast("别忘了留下你的署名", "error");
 
             localStorage.setItem('myNickname', name);
             try {
-                submitBtn.innerText = "正在施展压缩魔法..."; submitBtn.disabled = true; 
-                
-                // 此处的压缩现在对主线程零负担
+                submitBtn.innerText = "正在压缩时光..."; submitBtn.disabled = true; 
                 const finalFile = await compressImage(fileInput.files[0]);
-                submitBtn.innerText = "正在飞向云端...";
                 
+                submitBtn.innerText = "正在跨越星海...";
                 const { error: uploadError } = await appSupabase.storage.from('gallery').upload(finalFile.name, finalFile);
                 if (uploadError) throw uploadError;
 
+                submitBtn.innerText = "正在落笔生花...";
                 const { data: { publicUrl } } = appSupabase.storage.from('gallery').getPublicUrl(finalFile.name);
-                submitBtn.innerText = "正在写进日记本...";
-
-                const { error: dbError } = await appSupabase.from('photos').insert([{ title: title, author: name, image_url: publicUrl }]);
+                const { error: dbError } = await appSupabase.from('photos').insert([{ title, author: name, image_url: publicUrl }]);
                 if (dbError) throw dbError;
                 
-                alert("✅ 投递成功！"); 
+                showToast("回忆已成功封存", "success"); 
                 toggleModal(false); 
-                fileInput.value = ''; 
-                document.getElementById('photoTitle').value = '';
-                
-                // 重新拉取展示，自动触发骨架屏
+                fileInput.value = ''; document.getElementById('photoTitle').value = '';
                 loadPhotos();
             } catch (error) {
-                alert("糟糕，投递失败了！网络出错了。");
-                console.error("上传错误:", error);
+                showToast("投递失败，请检查网络", "error");
             } finally {
-                submitBtn.innerText = "投递"; submitBtn.disabled = false;
+                submitBtn.innerText = "封存"; submitBtn.disabled = false;
             }
         }
     </script>
