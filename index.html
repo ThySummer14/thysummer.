@@ -372,10 +372,12 @@
                 document.getElementById('photoFile').value = ''; 
                 document.getElementById('photoTitle').value = '';
                 loadPhotos();
-            } catch (err) { 
+           } catch (err) { 
+                // 临时加一句 alert，让手机把真实的错误原因弹到屏幕上！
+                alert("真实报错: " + (err.message || JSON.stringify(err) || err));
                 showToast("星空通道拥堵，请稍候重试", "error"); 
                 console.error(err);
-            } finally { 
+            } finally {
                 btn.disabled = false; btn.innerText = "封存"; 
             }
         };
