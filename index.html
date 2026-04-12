@@ -102,9 +102,7 @@
             position: relative; width: 100%; transform-style: preserve-3d;
             transition: transform 0.8s var(--cubic-bounce); will-change: transform; cursor: pointer;
         }
-        /* 独立触发控制 */
         .card-inner.is-flipped { transform: rotateY(180deg); }
-        /* 交互抖动反馈 (正面悬停) */
         @media (hover: hover) {
             .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.01); }
         }
@@ -113,7 +111,6 @@
             position: relative; width: 100%; backface-visibility: hidden; border-radius: 16px;
             background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border); box-shadow: var(--shadow-soft);
-            /* 明信片留白法 */
             padding: 12px 12px 18px 12px; 
         }
         .card-back {
@@ -121,23 +118,40 @@
             display: flex; flex-direction: column; padding: 0; overflow: hidden;
         }
 
-        /* 解决 CLS：强制图片容器占位 */
-        .img-container { width: 100%; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #E8EDE9; position: relative; }
-        .img-container img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; display: block; }
-        .img-container img.loaded { opacity: 1; }
+        /* 灵魂排版：Anti-CLS 无裁切中心扩散 */
+        .img-container { 
+            width: 100%; min-height: 200px; border-radius: 10px; overflow: hidden; 
+            background: rgba(140, 161, 146, 0.1); position: relative; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .img-container img { 
+            width: 100%; height: auto; display: block; 
+            opacity: 0; transform: scale(0.95); 
+            transition: opacity 0.6s ease, transform 0.6s var(--cubic-bounce); 
+        }
+        .img-container img.loaded { opacity: 1; transform: scale(1); }
 
         .card-info { padding-top: 16px; position: relative; text-align: center; }
         .card-title { margin: 0 0 6px; font-size: 15px; font-weight: bold; }
         .card-author { margin: 0; font-size: 12px; color: var(--text-muted); }
 
-        /* 落叶共鸣按钮 */
+        /* 🍂 晨雾青落叶共鸣系统 */
         .like-btn {
             position: absolute; right: 0; bottom: 0; background: transparent; border: none;
             display: flex; align-items: center; gap: 4px; color: var(--accent-color);
             font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s;
         }
-        .like-btn svg { transition: transform 0.4s var(--cubic-bounce); }
-        .like-btn:active svg { transform: scale(1.4) rotate(-15deg); }
+        .like-btn svg { transition: transform 0.4s var(--cubic-bounce), filter 0.4s ease; }
+        /* 脉冲点赞特效 */
+        .like-btn.liked svg { 
+            animation: pulse-cyan 0.5s var(--cubic-bounce); 
+            filter: drop-shadow(0 0 6px rgba(140, 161, 146, 0.6));
+        }
+        @keyframes pulse-cyan {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.4) rotate(-15deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
 
         /* 背面评论区布局 */
         .back-header { padding: 16px; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: bold; color: var(--accent-color); }
@@ -154,17 +168,18 @@
         .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 10px; padding: 0 16px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s;}
 
         /* =========================================
-           5. 全面屏自适应 & 音乐悬浮
+           5. 全面屏自适应 & 明信片留白
            ========================================= */
         @media (max-width: 900px) { .view-gallery { column-count: 2; column-gap: 20px; } }
         @media (max-width: 600px) { 
-            #main-container { padding: 10px 16px 60px; }
+            #main-container { padding: 10px 0 60px 0; } /* 容器去除内边距 */
             .view-gallery { column-count: 1; }
-            /* 移动端留白明信片感 */
-            .view-gallery .card-wrapper { padding: 0 10px; }
+            /* 移动端留白明信片感：依靠卡片外边距 */
+            .view-gallery .card-wrapper { margin: 0 16px 28px 16px; } 
+            
             .view-timeline::before { left: 24px; }
             .tl-row { flex-direction: column; }
-            .tl-left, .tl-right { width: 100%; padding: 10px 0 15px 50px; }
+            .tl-left, .tl-right { width: 100%; padding: 10px 16px 15px 50px; }
             .tl-row::after { left: 24px; top: 35px; width: 10px; height: 10px; }
             .time-badge { align-self: flex-start; margin-left: 24px; }
             header h1 { font-size: 28px; }
@@ -226,12 +241,15 @@
         </div>
     </div>
 
-    <div id="identityModal" class="modal">
+    <div id="identityModal" class="modal" style="z-index: 1001;">
         <div class="modal-box">
             <h3 style="margin: 0 0 15px; color: var(--accent-color); font-size: 16px;">时光旅人</h3>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">请留下你的名号<br>让这声回音有迹可循</p>
             <input type="text" id="identityName" placeholder="怎么称呼你？" class="input-box" autocomplete="off">
-            <button class="btn" style="width: 100%;" onclick="confirmIdentity()">缔结契约</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('identityModal').classList.remove('show'); pendingCommentAction = null;">取消</button>
+                <button class="btn" style="flex:1;" onclick="confirmIdentity()">缔结契约</button>
+            </div>
         </div>
     </div>
 
@@ -256,14 +274,18 @@
         const appSupabase = window.supabase ? window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key) : null;
 
         // ==========================================
-        // 🧠 状态机与性能观察器
+        // 🧠 状态机与智能观察器 (Anti-Bug 核心)
         // ==========================================
         const State = { photos: [], currentMode: 'gallery' };
         let currentlyFlippedCard = null;
-        let flipScrollStartY = 0;
-        let pendingCommentAction = null; // 用于暂存评论行为
+        let pendingCommentAction = null; 
+        
+        // 【关键修复】软键盘锁机制
+        let isKeyboardActive = false;
+        document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = true; });
+        document.addEventListener('focusout', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = false; });
 
-        // IO 丝滑划入引擎 (Anti-CLS)
+        // 丝滑划入引擎 (Anti-CLS)
         const appearObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -273,13 +295,17 @@
             });
         }, { threshold: 0.1, rootMargin: '50px' });
 
-        // 无感复位引擎 (监听滚动)
-        window.addEventListener('scroll', () => {
-            if (currentlyFlippedCard && Math.abs(window.scrollY - flipScrollStartY) > 150) {
-                currentlyFlippedCard.classList.remove('is-flipped');
-                currentlyFlippedCard = null;
-            }
-        }, { passive: true });
+        // 【关键修复】视口保护式复位 (无感翻转)
+        const flipObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                // 当卡片滑出视口 80% (可见度低于20%)，且当前没有唤起键盘时才触发复位
+                if (!entry.isIntersecting && !isKeyboardActive && entry.target.classList.contains('is-flipped')) {
+                    entry.target.classList.remove('is-flipped');
+                    flipObserver.unobserve(entry.target);
+                    if (currentlyFlippedCard === entry.target) currentlyFlippedCard = null;
+                }
+            });
+        }, { threshold: 0.2 });
 
         // ==========================================
         // ✨ 数据挂载与双模渲染工厂
@@ -317,12 +343,11 @@
                 }
             }
             container.innerHTML = html;
-            // 绑定观察器
             document.querySelectorAll('.card-wrapper').forEach(el => appearObserver.observe(el));
         }
 
         function createCardHTML(p, wrapperClass) {
-            // 🍂 落叶 SVG 图标
+            // 🍂 晨雾青落叶图标
             const leafIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.5 2C15.5 2 13 3.5 12 5.5C11 3.5 8.5 2 6.5 2 3.5 2 2 5 2 8c0 5 9.5 13 10 13s10-8 10-13c0-3-1.5-6-4.5-6zm-5.5 11c-2.5-3-5.5-4-5.5-4s2.5 0 5.5 4zm0 0c2.5-3 5.5-4 5.5-4s-2.5 0-5.5 4z"/></svg>`;
             
             return `
@@ -340,7 +365,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-back" onclick="event.stopPropagation()">
+                    <div class="card-back">
                         <div class="back-header">拾光回音 <button class="close-flip" data-action="close">合上</button></div>
                         <div class="comments-list" id="comments-${p.id}">
                             <div style="text-align:center; padding:20px; color:var(--text-muted); opacity:0.6">翻阅中...</div>
@@ -355,21 +380,27 @@
         }
 
         // ==========================================
-        // 🎮 全局事件委托 (排他性翻转与逻辑路由)
+        // 🎮 全局纯净事件路由 (彻底解决拦截Bug)
         // ==========================================
         document.getElementById('main-container').addEventListener('click', async (e) => {
             const likeBtn = e.target.closest('[data-action="like"]');
-            const closeBtn = e.target.closest('[data-action="close"]');
             const sendBtn = e.target.closest('[data-action="send"]');
+            const closeBtn = e.target.closest('[data-action="close"]');
+            const cardBack = e.target.closest('.card-back');
             const cardInner = e.target.closest('.card-inner');
 
-            // 1. 点赞 (阻断翻转)
+            // 1. 点赞系统 (落叶特效)
             if (likeBtn) {
-                e.stopPropagation();
+                e.stopPropagation(); 
                 const id = likeBtn.dataset.id;
                 const span = likeBtn.querySelector('span');
                 let currentLikes = parseInt(span.innerText);
-                span.innerText = currentLikes + 1; // 乐观渲染
+                
+                // 触发脉冲动画
+                likeBtn.classList.add('liked');
+                setTimeout(() => likeBtn.classList.remove('liked'), 600);
+                
+                span.innerText = currentLikes + 1;
                 appSupabase.from('photos').update({ likes: currentLikes + 1 }).eq('id', id).then();
                 return;
             }
@@ -383,7 +414,6 @@
                 
                 const nickname = localStorage.getItem('nickname');
                 if (!nickname) {
-                    // 触发时光旅人契约
                     pendingCommentAction = { id, content };
                     document.getElementById('identityModal').classList.add('show');
                     return;
@@ -396,20 +426,27 @@
             if (closeBtn) {
                 e.stopPropagation();
                 cardInner.classList.remove('is-flipped');
+                flipObserver.unobserve(cardInner);
                 currentlyFlippedCard = null;
                 return;
             }
+            
+            // 阻断背面空白区域被误触
+            if (cardBack) { return; }
 
-            // 4. 触发翻转与极致预加载
+            // 4. 正面翻转与极致预加载
             if (cardInner && !cardInner.classList.contains('is-flipped')) {
-                // 排他性：关掉上一张
+                // 排他性：合上其他卡片
                 if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
                     currentlyFlippedCard.classList.remove('is-flipped');
+                    flipObserver.unobserve(currentlyFlippedCard);
                 }
                 cardInner.classList.add('is-flipped');
                 currentlyFlippedCard = cardInner;
-                flipScrollStartY = window.scrollY; // 记录原点用于无感复位
-                loadComments(cardInner.dataset.id); // 立即拉取数据
+                
+                // 绑定视口观察器，用于自动合上
+                flipObserver.observe(cardInner);
+                loadComments(cardInner.dataset.id); 
             }
         });
 
@@ -437,7 +474,7 @@
 
         async function loadComments(id) {
             const list = document.getElementById(`comments-${id}`);
-            list.style.opacity = 0.5; // 淡入预备
+            list.style.opacity = 0.5; 
             const { data, error } = await appSupabase.from('comments').select('*').eq('photo_id', id).order('created_at', { ascending: true });
             
             setTimeout(() => {
@@ -447,7 +484,7 @@
                     </div>`).join('') : '<div style="text-align:center; padding:20px; color:var(--text-muted);">信笺背面空空如也，留下第一道印记吧。</div>';
                 list.style.opacity = 1;
                 list.scrollTop = list.scrollHeight;
-            }, 150); // 配合物理翻转的视觉差
+            }, 150); 
         }
 
         // ==========================================
@@ -503,7 +540,6 @@
         // ==========================================
         window.toggleMode = () => {
             State.currentMode = State.currentMode === 'gallery' ? 'timeline' : 'gallery';
-            // 同步无延迟更新文本
             document.getElementById('modeBtn').innerText = State.currentMode === 'gallery' ? '岁月模式' : '画廊模式';
             renderEngine();
         };
