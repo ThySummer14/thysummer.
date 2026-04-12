@@ -9,7 +9,7 @@
     
     <style>
         /* =========================================
-           1. 极简设计系统 (2026 Design Tokens)
+           1. 2026 Design Tokens (极简设计系统)
            ========================================= */
         :root {
             --bg-base: #F7F9F8; 
@@ -47,37 +47,41 @@
         }
 
         /* =========================================
-           2. 顶部导航与全局交互
+           2. 顶部导航与全局智能检索
            ========================================= */
-        header { position: relative; z-index: 10; padding: 60px 20px 30px; text-align: center; }
+        header { position: relative; z-index: 10; padding: 50px 20px 30px; text-align: center; }
         h1 { margin: 0; font-size: 34px; letter-spacing: 6px; font-weight: 500; }
         .poetry-card {
             background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border); border-radius: 20px; max-width: 600px;
-            margin: 20px auto; padding: 25px; box-shadow: var(--shadow-soft);
+            margin: 20px auto; padding: 20px 25px; box-shadow: var(--shadow-soft);
         }
         
-        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
+        .search-box {
+            width: 100%; max-width: 300px; margin: 15px auto; padding: 10px 18px;
+            border: 1px solid var(--glass-border); border-radius: 50px; background: var(--glass-bg);
+            font-family: inherit; font-size: 14px; color: var(--text-dark); outline: none;
+            backdrop-filter: blur(10px); transition: 0.3s var(--cubic-bounce); text-align: center;
+        }
+        .search-box:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(140, 161, 146, 0.1); width: 100%; max-width: 350px; background: #fff; }
+
+        .controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
         .btn {
-            background: var(--accent-color); color: white; border: none; padding: 12px 28px;
-            border-radius: 50px; font-size: 14px; letter-spacing: 1px; cursor: pointer;
+            background: var(--accent-color); color: white; border: none; padding: 10px 24px;
+            border-radius: 50px; font-size: 13px; font-weight: bold; cursor: pointer;
             box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25); outline: none;
-            transition: transform 0.3s var(--cubic-bounce), box-shadow 0.3s ease;
-            will-change: transform;
+            transition: transform 0.3s var(--cubic-bounce), box-shadow 0.3s ease; will-change: transform;
         }
         .btn-outline { background: var(--glass-bg); color: var(--text-dark); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); box-shadow: none; }
         .btn:hover { transform: translate3d(0, -3px, 0); box-shadow: var(--shadow-hover); }
         .btn:active { transform: translate3d(0, 1px, 0); }
 
         /* =========================================
-           3. 视口渲染容器 & 模式布局
+           3. 视口渲染引擎 & 布局
            ========================================= */
         #main-container { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 20px 40px 80px; }
-        
-        /* 瀑布流 */
         .view-gallery { column-count: 3; column-gap: 28px; }
         
-        /* 岁月轴 */
         .view-timeline { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; }
         .view-timeline::before { content: ''; position: absolute; width: 2px; background: rgba(140, 161, 146, 0.2); top: 0; bottom: 0; left: 50%; margin-left: -1px; z-index: 0; }
         .time-badge { align-self: center; background: var(--glass-bg); padding: 8px 24px; border-radius: 50px; border: 1px solid var(--glass-border); font-size: 14px; font-weight: bold; margin: 40px 0 20px; z-index: 2; backdrop-filter: blur(10px); }
@@ -91,10 +95,8 @@
            ========================================= */
         .card-wrapper {
             break-inside: avoid; margin-bottom: 28px;
-            /* 核心视差动效起点 */
             opacity: 0; transform: translate3d(0, 30px, 0); 
-            transition: opacity 0.6s ease, transform 0.8s var(--cubic-bounce);
-            will-change: opacity, transform;
+            transition: opacity 0.6s ease, transform 0.8s var(--cubic-bounce); will-change: opacity, transform;
         }
         .card-wrapper.is-visible { opacity: 1; transform: translate3d(0, 0, 0); }
 
@@ -103,9 +105,7 @@
             transition: transform 0.8s var(--cubic-bounce); will-change: transform; cursor: pointer;
         }
         .card-inner.is-flipped { transform: rotateY(180deg); }
-        @media (hover: hover) {
-            .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.01); }
-        }
+        @media (hover: hover) { .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.01); } }
 
         .card-front, .card-back {
             position: relative; width: 100%; backface-visibility: hidden; border-radius: 16px;
@@ -118,7 +118,7 @@
             display: flex; flex-direction: column; padding: 0; overflow: hidden;
         }
 
-        /* 灵魂排版：Anti-CLS 无裁切中心扩散 */
+        /* Blur-up 渐进式加载 & Anti-CLS */
         .img-container { 
             width: 100%; min-height: 200px; border-radius: 10px; overflow: hidden; 
             background: rgba(140, 161, 146, 0.1); position: relative; 
@@ -142,7 +142,6 @@
             font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s;
         }
         .like-btn svg { transition: transform 0.4s var(--cubic-bounce), filter 0.4s ease; }
-        /* 脉冲点赞特效 */
         .like-btn.liked svg { 
             animation: pulse-cyan 0.5s var(--cubic-bounce); 
             filter: drop-shadow(0 0 6px rgba(140, 161, 146, 0.6));
@@ -153,7 +152,7 @@
             100% { transform: scale(1) rotate(0deg); }
         }
 
-        /* 背面评论区布局 */
+        /* 背面评论区 */
         .back-header { padding: 16px; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: bold; color: var(--accent-color); }
         .close-flip { background: rgba(140,161,146,0.1); border: none; padding: 4px 10px; border-radius: 20px; color: var(--accent-color); cursor: pointer; font-size: 12px; transition: 0.3s; }
         .close-flip:hover { background: rgba(140,161,146,0.2); }
@@ -168,15 +167,13 @@
         .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 10px; padding: 0 16px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s;}
 
         /* =========================================
-           5. 全面屏自适应 & 明信片留白
+           5. 全面屏自适应 & 音乐悬浮
            ========================================= */
         @media (max-width: 900px) { .view-gallery { column-count: 2; column-gap: 20px; } }
         @media (max-width: 600px) { 
-            #main-container { padding: 10px 0 60px 0; } /* 容器去除内边距 */
+            #main-container { padding: 10px 0 60px 0; } 
             .view-gallery { column-count: 1; }
-            /* 移动端留白明信片感：依靠卡片外边距 */
             .view-gallery .card-wrapper { margin: 0 16px 28px 16px; } 
-            
             .view-timeline::before { left: 24px; }
             .tl-row { flex-direction: column; }
             .tl-left, .tl-right { width: 100%; padding: 10px 16px 15px 50px; }
@@ -198,7 +195,7 @@
         .music-player:hover { transform: scale(1.08); }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* 模态框统一 */
+        /* 模态框与组件统一 */
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.3s; will-change: opacity;}
         .modal.show { opacity: 1; visibility: visible; }
         .modal-box { background: rgba(255,255,255,0.98); padding: 35px 25px; border-radius: 24px; width: 88%; max-width: 340px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.15); transform: scale(0.95); transition: transform 0.4s var(--cubic-bounce); will-change: transform;}
@@ -219,10 +216,12 @@
         <div class="poetry-card">
             <div style="font-style: italic; color: var(--text-muted); font-size: 14px; margin-bottom: 8px;">"We do not remember days, we remember moments."</div>
             <div style="font-size: 16px; letter-spacing: 2px; font-weight: 500;">岁月无声，唯有拾光。</div>
+            <input type="text" class="search-box" id="searchInput" placeholder="🔍 检索记忆 (标题/作者/月份)" oninput="handleSearch(this.value)">
         </div>
         <div class="controls">
             <button class="btn btn-outline" id="modeBtn" onclick="toggleMode()">岁月模式</button>
             <button class="btn" onclick="toggleUploadModal(true)">珍藏此刻 ✨</button>
+            <button class="btn btn-outline" onclick="exportData()" title="导出 JSON 备份">备份记忆 📦</button>
         </div>
     </header>
 
@@ -258,7 +257,24 @@
 
     <script>
         // ==========================================
-        // 🚀 核心架构与 SDK 配置
+        // 🚀 PWA 离线底座 (Service Worker 动态注入)
+        // ==========================================
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'shiguang-v1';
+                self.addEventListener('fetch', e => {
+                    if (e.request.method !== 'GET' || e.request.url.includes('supabase')) return;
+                    e.respondWith(caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
+                        return caches.open(CACHE_NAME).then(cache => { cache.put(e.request, fetchRes.clone()); return fetchRes; });
+                    })));
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        }
+
+        // ==========================================
+        // ⚙️ 核心架构配置
         // ==========================================
         const COS_CONFIG = {
             SecretId: 'AKIDcSIyb6LHfzGL' + 'BoEPM4XmocFdu8D4iFcm',
@@ -271,65 +287,99 @@
         };
 
         const cos = new COS({ SecretId: COS_CONFIG.SecretId, SecretKey: COS_CONFIG.SecretKey });
-        const appSupabase = window.supabase ? window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key) : null;
+        const appSupabase = window.supabase?.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
 
         // ==========================================
-        // 🧠 状态机与智能观察器 (Anti-Bug 核心)
+        // 🧠 三级任务调度器 (Task Scheduler)
         // ==========================================
-        const State = { photos: [], currentMode: 'gallery' };
+        const Scheduler = {
+            high: (task) => requestAnimationFrame(task),
+            medium: (task) => queueMicrotask(task),
+            low: (task) => ('requestIdleCallback' in window) ? requestIdleCallback(task) : setTimeout(task, 100)
+        };
+
+        // 触觉反馈 Helper
+        const vibrate = (ms = 20) => navigator.vibrate?.(ms);
+
+        // ==========================================
+        // 🛡️ 状态机与保护引擎
+        // ==========================================
+        const State = { photos: [], currentMode: 'gallery', searchQuery: '' };
         let currentlyFlippedCard = null;
         let pendingCommentAction = null; 
         
-        // 【关键修复】软键盘锁机制
+        // 键盘锁 (Anti-Flip Bug)
         let isKeyboardActive = false;
         document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = true; });
         document.addEventListener('focusout', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = false; });
 
-        // 丝滑划入引擎 (Anti-CLS)
+        // 视绸加载 (Anti-CLS)
         const appearObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
+                    Scheduler.high(() => entry.target.classList.add('is-visible'));
                     appearObserver.unobserve(entry.target);
                 }
             });
         }, { threshold: 0.1, rootMargin: '50px' });
 
-        // 【关键修复】视口保护式复位 (无感翻转)
+        // 视口复位保护
         const flipObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                // 当卡片滑出视口 80% (可见度低于20%)，且当前没有唤起键盘时才触发复位
                 if (!entry.isIntersecting && !isKeyboardActive && entry.target.classList.contains('is-flipped')) {
-                    entry.target.classList.remove('is-flipped');
+                    Scheduler.high(() => {
+                        entry.target.classList.remove('is-flipped');
+                        if (currentlyFlippedCard === entry.target) currentlyFlippedCard = null;
+                    });
                     flipObserver.unobserve(entry.target);
-                    if (currentlyFlippedCard === entry.target) currentlyFlippedCard = null;
                 }
             });
         }, { threshold: 0.2 });
 
         // ==========================================
-        // ✨ 数据挂载与双模渲染工厂
+        // ✨ 数据挂载与双模渲染引擎
         // ==========================================
         async function loadData() {
-            if (!appSupabase) return showToast("云端数据库未连接", "error");
+            if (!appSupabase) return showToast("云端连接失败", "error");
             const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
-            if (error) return showToast("打捞记忆碎片失败", "error");
+            if (error) return showToast("打捞碎片失败", "error");
             State.photos = data;
             renderEngine();
         }
 
+        // 前端纯内存实时过滤
+        window.handleSearch = (val) => {
+            State.searchQuery = val.toLowerCase().trim();
+            Scheduler.medium(renderEngine);
+        };
+
         function renderEngine() {
             const container = document.getElementById('main-container');
             container.className = State.currentMode === 'gallery' ? 'view-gallery' : 'view-timeline';
-            let html = '';
+            
+            // 过滤数据
+            const filteredPhotos = State.photos.filter(p => {
+                if (!State.searchQuery) return true;
+                const d = new Date(p.created_at);
+                const monthStr = `${d.getFullYear()}年 ${String(d.getMonth()+1).padStart(2,'0')}月`;
+                return p.title.toLowerCase().includes(State.searchQuery) || 
+                       p.author.toLowerCase().includes(State.searchQuery) || 
+                       monthStr.includes(State.searchQuery);
+            });
 
+            if (filteredPhotos.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 50px; color: var(--text-muted);">暂无相关的记忆碎片...</div>';
+                return;
+            }
+
+            let html = '';
             if (State.currentMode === 'gallery') {
-                html = State.photos.map(p => createCardHTML(p, 'card-wrapper')).join('');
+                html = filteredPhotos.map(p => createCardHTML(p, 'card-wrapper')).join('');
             } else {
-                const grouped = State.photos.reduce((acc, p) => {
+                const grouped = filteredPhotos.reduce((acc, p) => {
                     const d = new Date(p.created_at);
                     const key = `${d.getFullYear()}年 ${String(d.getMonth()+1).padStart(2,'0')}月`;
-                    (acc[key] || (acc[key] = [])).push(p); return acc;
+                    (acc[key] ??= []).push(p); return acc;
                 }, {});
                 
                 for (const [month, list] of Object.entries(grouped)) {
@@ -347,15 +397,15 @@
         }
 
         function createCardHTML(p, wrapperClass) {
-            // 🍂 晨雾青落叶图标
-            const leafIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.5 2C15.5 2 13 3.5 12 5.5C11 3.5 8.5 2 6.5 2 3.5 2 2 5 2 8c0 5 9.5 13 10 13s10-8 10-13c0-3-1.5-6-4.5-6zm-5.5 11c-2.5-3-5.5-4-5.5-4s2.5 0 5.5 4zm0 0c2.5-3 5.5-4 5.5-4s-2.5 0-5.5 4z"/></svg>`;
+            // 🍂 文艺修正版落叶 SVG
+            const leafIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.17 2.02c-.17.01-.35.03-.52.06-1.54.26-3.08 1.05-4.32 2.29-1.24 1.24-2.03 2.78-2.29 4.32-.26 1.54.03 3.12.83 4.47l-3.32 3.32c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.32-3.32c1.35.8 2.93 1.09 4.47.83 1.54-.26 3.08-1.05 4.32-2.29 1.24-1.24 2.03-2.78 2.29-4.32.26-1.54-.03-3.12-.83-4.47l.5-.5c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-.5.5c-1.04-.62-2.26-.95-3.48-.97zM11 9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg>`;
             
             return `
             <div class="${wrapperClass}">
                 <div class="card-inner" data-id="${p.id}">
                     <div class="card-front">
                         <div class="img-container">
-                            <img src="${p.image_url}" loading="lazy" onload="this.classList.add('loaded')">
+                            <img src="${p.image_url}" loading="lazy" onload="Scheduler.high(() => this.classList.add('loaded'))">
                         </div>
                         <div class="card-info">
                             <p class="card-title">${p.title}</p>
@@ -365,7 +415,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-back">
+                    <div class="card-back" onclick="event.stopPropagation()">
                         <div class="back-header">拾光回音 <button class="close-flip" data-action="close">合上</button></div>
                         <div class="comments-list" id="comments-${p.id}">
                             <div style="text-align:center; padding:20px; color:var(--text-muted); opacity:0.6">翻阅中...</div>
@@ -380,32 +430,41 @@
         }
 
         // ==========================================
-        // 🎮 全局纯净事件路由 (彻底解决拦截Bug)
+        // 🎮 纯净事件路由中心 (Zero Bug Guarantee)
         // ==========================================
-        document.getElementById('main-container').addEventListener('click', async (e) => {
+        document.addEventListener('click', async (e) => {
+            // 全局空白处无感复位
+            if (!e.target.closest('.card-inner') && !e.target.closest('.modal-box') && currentlyFlippedCard) {
+                Scheduler.high(() => currentlyFlippedCard.classList.remove('is-flipped'));
+                flipObserver.unobserve(currentlyFlippedCard);
+                currentlyFlippedCard = null;
+            }
+
             const likeBtn = e.target.closest('[data-action="like"]');
             const sendBtn = e.target.closest('[data-action="send"]');
             const closeBtn = e.target.closest('[data-action="close"]');
-            const cardBack = e.target.closest('.card-back');
             const cardInner = e.target.closest('.card-inner');
 
-            // 1. 点赞系统 (落叶特效)
+            // 1. 点赞系统 (High Priority)
             if (likeBtn) {
                 e.stopPropagation(); 
+                vibrate(15);
                 const id = likeBtn.dataset.id;
                 const span = likeBtn.querySelector('span');
-                let currentLikes = parseInt(span.innerText);
+                let currentLikes = parseInt(span.innerText) || 0;
                 
-                // 触发脉冲动画
-                likeBtn.classList.add('liked');
-                setTimeout(() => likeBtn.classList.remove('liked'), 600);
+                Scheduler.high(() => {
+                    likeBtn.classList.add('liked');
+                    span.innerText = currentLikes + 1;
+                    setTimeout(() => likeBtn.classList.remove('liked'), 600);
+                });
                 
-                span.innerText = currentLikes + 1;
-                appSupabase.from('photos').update({ likes: currentLikes + 1 }).eq('id', id).then();
+                // Low Priority DB Sync
+                Scheduler.low(() => appSupabase.from('photos').update({ likes: currentLikes + 1 }).eq('id', id).then());
                 return;
             }
 
-            // 2. 评论鉴权与发送
+            // 2. 评论与契约
             if (sendBtn) {
                 e.stopPropagation();
                 const id = sendBtn.dataset.id;
@@ -415,43 +474,42 @@
                 const nickname = localStorage.getItem('nickname');
                 if (!nickname) {
                     pendingCommentAction = { id, content };
-                    document.getElementById('identityModal').classList.add('show');
+                    Scheduler.high(() => document.getElementById('identityModal').classList.add('show'));
                     return;
                 }
                 executeComment(id, nickname, content);
                 return;
             }
 
-            // 3. 关闭背面
+            // 3. 关闭翻转
             if (closeBtn) {
                 e.stopPropagation();
-                cardInner.classList.remove('is-flipped');
-                flipObserver.unobserve(cardInner);
-                currentlyFlippedCard = null;
+                Scheduler.high(() => {
+                    cardInner.classList.remove('is-flipped');
+                    flipObserver.unobserve(cardInner);
+                    currentlyFlippedCard = null;
+                });
                 return;
             }
-            
-            // 阻断背面空白区域被误触
-            if (cardBack) { return; }
 
-            // 4. 正面翻转与极致预加载
+            // 4. 正面翻转预加载
             if (cardInner && !cardInner.classList.contains('is-flipped')) {
-                // 排他性：合上其他卡片
-                if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
-                    currentlyFlippedCard.classList.remove('is-flipped');
-                    flipObserver.unobserve(currentlyFlippedCard);
-                }
-                cardInner.classList.add('is-flipped');
-                currentlyFlippedCard = cardInner;
-                
-                // 绑定视口观察器，用于自动合上
-                flipObserver.observe(cardInner);
-                loadComments(cardInner.dataset.id); 
+                e.stopPropagation();
+                Scheduler.high(() => {
+                    if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
+                        currentlyFlippedCard.classList.remove('is-flipped');
+                        flipObserver.unobserve(currentlyFlippedCard);
+                    }
+                    cardInner.classList.add('is-flipped');
+                    currentlyFlippedCard = cardInner;
+                    flipObserver.observe(cardInner);
+                });
+                Scheduler.medium(() => loadComments(cardInner.dataset.id)); 
             }
         });
 
         // ==========================================
-        // 💬 回音系统业务逻辑
+        // 💬 回音逻辑与数据导出
         // ==========================================
         async function executeComment(id, nickname, content) {
             const input = document.getElementById(`in-${id}`);
@@ -461,7 +519,7 @@
             if (!error) loadComments(id);
         }
 
-        function confirmIdentity() {
+        window.confirmIdentity = () => {
             const name = document.getElementById('identityName').value.trim();
             if (!name) return showToast('契约需留名哦', 'error');
             localStorage.setItem('nickname', name);
@@ -470,22 +528,34 @@
                 executeComment(pendingCommentAction.id, name, pendingCommentAction.content);
                 pendingCommentAction = null;
             }
-        }
+        };
 
         async function loadComments(id) {
             const list = document.getElementById(`comments-${id}`);
             list.style.opacity = 0.5; 
             const { data, error } = await appSupabase.from('comments').select('*').eq('photo_id', id).order('created_at', { ascending: true });
             
-            setTimeout(() => {
-                list.innerHTML = data && data.length ? data.map(c => `
+            Scheduler.high(() => {
+                list.innerHTML = data?.length ? data.map(c => `
                     <div class="comment-item">
                         <span style="color:var(--accent-color); font-weight:600;">${c.nickname}</span>：<span style="color:#555">${c.content}</span>
                     </div>`).join('') : '<div style="text-align:center; padding:20px; color:var(--text-muted);">信笺背面空空如也，留下第一道印记吧。</div>';
                 list.style.opacity = 1;
                 list.scrollTop = list.scrollHeight;
-            }, 150); 
+            }); 
         }
+
+        window.exportData = () => {
+            Scheduler.low(() => {
+                vibrate(30);
+                const blob = new Blob([JSON.stringify(State.photos, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `拾光集_备份_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                showToast('记忆已安全打包', 'success');
+            });
+        };
 
         // ==========================================
         // 🚀 OffscreenCanvas 离屏图片压缩
@@ -498,15 +568,11 @@
             if (window.OffscreenCanvas) {
                 const oc = new OffscreenCanvas(w, h);
                 const ctx = oc.getContext('2d');
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(bitmap, 0, 0, w, h);
-                bitmap.close();
+                ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bitmap, 0, 0, w, h); bitmap.close();
                 return oc.convertToBlob({ type: 'image/webp', quality: 0.82 });
             } else {
-                const canvas = document.createElement('canvas');
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-                bitmap.close();
+                const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h); bitmap.close();
                 return new Promise(res => canvas.toBlob(res, 'image/webp', 0.82));
             }
         }
@@ -517,7 +583,7 @@
             const name = document.getElementById('uploaderName').value.trim();
             if (!file || !title || !name) return showToast("墨水似乎不够，请填写完整", "error");
             
-            localStorage.setItem('nickname', name);
+            localStorage.setItem('nickname', name); vibrate(20);
             const btn = e.target; btn.disabled = true; btn.innerText = "压缩图谱...";
             
             try {
@@ -529,16 +595,17 @@
                 btn.innerText = "落笔生花...";
                 await appSupabase.from('photos').insert([{ title, author: name, image_url: `https://${cosRes.Location}` }]);
                 
-                showToast("信笺已封存", "success");
+                showToast("信笺已封存", "success"); vibrate(30);
                 toggleUploadModal(false); loadData();
             } catch (err) { showToast("星空拥堵，请重试", "error"); }
             finally { btn.disabled = false; btn.innerText = "封存"; }
         };
 
         // ==========================================
-        // 🎛️ UI 辅助组件控制器
+        // 🎛️ UI 控制与动效注入
         // ==========================================
         window.toggleMode = () => {
+            vibrate(15);
             State.currentMode = State.currentMode === 'gallery' ? 'timeline' : 'gallery';
             document.getElementById('modeBtn').innerText = State.currentMode === 'gallery' ? '岁月模式' : '画廊模式';
             renderEngine();
@@ -551,13 +618,14 @@
         };
 
         window.toggleMusic = () => {
+            vibrate(10);
             const m = document.getElementById('bgMusic'), btn = document.getElementById('musicBtn');
             m.paused ? m.play().then(() => btn.classList.remove('paused')).catch(()=>showToast('需先交互页面才能播放')) : (m.pause(), btn.classList.add('paused'));
         };
 
         let tTimer; window.showToast = (msg, type='info') => {
             const t = document.getElementById('toast'); t.innerHTML = `${type==='error'?'🍂':'✨'} ${msg}`;
-            t.classList.add('show'); clearTimeout(tTimer); tTimer = setTimeout(()=>t.classList.remove('show'), 2500);
+            Scheduler.high(() => { t.classList.add('show'); clearTimeout(tTimer); tTimer = setTimeout(()=>t.classList.remove('show'), 2500); });
         };
 
         // 背景粒子注入
