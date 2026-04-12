@@ -11,7 +11,7 @@
     
     <style>
         /* =========================================
-           1. 2026 Design Tokens & 核心重置
+           1. 2026 旗舰级设计系统 (Design Tokens)
            ========================================= */
         :root {
             --bg-base: #F7F9F8; 
@@ -34,7 +34,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', serif;
             background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%);
             color: var(--text-dark); min-height: 100vh; overflow-x: hidden;
-            -webkit-font-smoothing: antialiased; scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* 硬件加速的全局微光背景 */
@@ -46,7 +46,7 @@
         }
         @keyframes floatUp {
             0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
-            30% { opacity: 0.6; }
+            30% { opacity: 0.5; }
             100% { transform: translate3d(15vw, -120vh, 0) scale(1.5); opacity: 0; }
         }
 
@@ -83,7 +83,7 @@
         .btn-shiguang.primary { background: var(--accent-color); color: white; border-color: transparent; box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25); }
         .btn-shiguang:hover { transform: translate3d(0, -2px, 0); background: #fff; border-color: var(--accent-color); color: var(--accent-color); }
         .btn-shiguang.primary:hover { background: var(--accent-hover); color: white; }
-        .btn-shiguang:active { transform: translate3d(0, 2px, 0); box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-shiguang:active { transform: translate3d(0, 2px, 0); box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); } 
 
         /* =========================================
            3. 视口渲染引擎 & 岁月模式中轴
@@ -99,22 +99,22 @@
         .tl-right { margin-left: auto; }
         .tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 45px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 15px rgba(140,161,146,0.4); }
 
-        /* Empty State */
-        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 15px; letter-spacing: 1px; animation: fadeIn 0.8s ease; }
+        /* 空状态提示 */
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 15px; letter-spacing: 1px; animation: fadeInSmooth 0.8s ease; }
 
         /* =========================================
            4. 散落美学 & 极致 3D 架构
            ========================================= */
         .card-wrapper {
             break-inside: avoid; margin-bottom: 35px;
-            /* 散落美学：随机角度由 JS 注入 --random-angle */
+            /* 散落美学：随机角度由 JS 注入 */
             transform: translate3d(0, 40px, 0) rotate(0deg); opacity: 0; 
             transition: opacity 0.7s ease, transform 0.8s var(--cubic-bounce); 
             will-change: opacity, transform; perspective: 1200px;
         }
         .card-wrapper.is-visible { opacity: 1; transform: translate3d(0, 0, 0) rotate(var(--random-angle, 0deg)); }
 
-        .card-inner { position: relative; width: 100%; transform-style: preserve-3d; transition: transform 0.85s var(--cubic-bounce); cursor: pointer; border-radius: 18px; }
+        .card-inner { position: relative; width: 100%; transform-style: preserve-3d; transition: transform 0.85s var(--cubic-bounce); cursor: pointer; border-radius: 18px; will-change: transform; }
         .card-inner.is-flipped { transform: rotateY(180deg); }
         @media (hover: hover) { .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.02); box-shadow: var(--shadow-float); } }
 
@@ -125,14 +125,14 @@
         }
         .card-back { position: absolute; top: 0; left: 0; height: 100%; transform: rotateY(180deg); display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 
-        /* Anti-CLS 渐进式渲染 (Blur-up) */
+        /* 灵魂排版：Anti-CLS 渐进式渲染 (Blur-up) */
         .img-container { 
-            width: 100%; min-height: 220px; border-radius: 12px; overflow: hidden; 
+            width: 100%; min-height: 200px; border-radius: 12px; overflow: hidden; 
             background: linear-gradient(120deg, rgba(140,161,146,0.05), rgba(140,161,146,0.15)); 
             position: relative; display: flex; align-items: center; justify-content: center;
         }
         .img-container img { 
-            width: 100%; height: auto; display: block; object-fit: cover;
+            width: 100%; height: auto; display: block; 
             opacity: 0; transform: scale(0.95); filter: blur(5px);
             transition: opacity 0.8s ease, transform 0.8s var(--cubic-bounce), filter 0.6s ease; 
         }
@@ -168,13 +168,16 @@
         @keyframes floatUpText { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-25px) scale(1.2); } }
 
         /* =========================================
-           6. 背面评论区与极简表单
+           6. 背面评论区 (去除合上按钮版)
            ========================================= */
-        .back-header { padding: 18px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); display: flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--text-dark); background: rgba(140,161,146,0.05); }
+        .back-header { padding: 18px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: 700; color: var(--accent-color); background: rgba(140,161,146,0.05); letter-spacing: 4px; }
+        
         .comments-list { flex: 1; padding: 20px; overflow-y: auto; font-size: 13px; scrollbar-width: none; text-align: left; }
         .comments-list::-webkit-scrollbar { display: none; }
-        .comment-item { margin-bottom: 16px; line-height: 1.6; animation: fadeIn 0.5s ease backwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .comment-item { margin-bottom: 16px; line-height: 1.6; animation: fadeInSmooth 0.5s ease backwards; }
+        
+        .empty-comment-tip { animation: fadeInSmooth 1s ease forwards; text-align: center; padding: 30px 20px; color: var(--text-muted); font-style: italic; }
+        @keyframes fadeInSmooth { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .comment-input-box { padding: 14px; border-top: 1px solid rgba(0,0,0,0.04); display: flex; gap: 10px; background: #fff; }
         .comment-input-box input { flex: 1; padding: 12px 15px; border: 1px solid #E8EDE9; border-radius: 14px; font-size: 13px; outline: none; background: #F7F9F8; transition: 0.3s; }
@@ -189,11 +192,11 @@
         @media (max-width: 600px) { 
             #main-container { padding: 10px 0 80px 0; } 
             .view-gallery { column-count: 1; }
-            .view-gallery .card-wrapper { margin: 0 18px 30px 18px; } /* 18px 手机端明信片边距 */
+            .view-gallery .card-wrapper { margin: 0 16px 30px 16px; } /* 16px 手机端明信片边距 */
             
             .view-timeline::before { left: 24px; }
             .tl-row { flex-direction: column; }
-            .tl-left, .tl-right { width: 100%; padding: 15px 20px 15px 55px; }
+            .tl-left, .tl-right { width: 100%; padding: 15px 16px 15px 50px; }
             .tl-row::after { left: 24px; top: 40px; width: 10px; height: 10px; }
             .time-badge { margin-left: 24px; align-self: flex-start; }
             header { padding: 40px 15px 20px; } h1 { font-size: 28px; }
@@ -285,15 +288,14 @@
             const swCode = `
                 const CACHE_NAME = 'shiguang-v2026';
                 self.addEventListener('fetch', e => {
-                    // 放行 Supabase 与云端存储请求，仅缓存静态骨架与图片资源
                     if (e.request.method !== 'GET' || e.request.url.includes('supabase.co')) return;
                     e.respondWith(caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
                         return caches.open(CACHE_NAME).then(cache => { cache.put(e.request, fetchRes.clone()); return fetchRes; });
-                    }).catch(()=>{}))); // 离线静默处理
+                    }).catch(()=>{})));
                 });
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => console.log('SW 注册跳过'));
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => console.log('SW 跳过'));
         }
 
         // ==========================================
@@ -316,15 +318,11 @@
         // 🧠 三级任务调度引擎 (High-Fidelity Scheduler)
         // ==========================================
         const Scheduler = {
-            // 锁定 60fps：DOM 渲染、3D翻转、点赞物理反馈
             high: (task) => requestAnimationFrame(task),
-            // 微小延迟：内存过滤、评论拉取
             medium: (task) => queueMicrotask(task),
-            // 绝对空闲：JSON 导出、数据持久化同步
             low: (task) => ('requestIdleCallback' in window) ? requestIdleCallback(task) : setTimeout(task, 200)
         };
 
-        // 硬件触觉反馈 (Haptics)
         const vibrate = (ms = 20) => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
 
         // ==========================================
@@ -338,11 +336,9 @@
         let isViewportLocked = false;
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => {
-                // 若视口高度急剧缩小，认定键盘弹起，冻结卡片自动翻转逻辑
                 isViewportLocked = window.visualViewport.height < window.innerHeight - 150;
             });
         }
-        // 双重保险：Focus 探针
         document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') isViewportLocked = true; });
         document.addEventListener('focusout', (e) => { if (e.target.tagName === 'INPUT') isViewportLocked = false; });
 
@@ -359,7 +355,6 @@
         // 视口保护复位 (Intelligent Flip Control)
         const flipObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                // 滑出视口 80% 且未唤起键盘时，优雅合上
                 if (!entry.isIntersecting && !isViewportLocked && entry.target.classList.contains('is-flipped')) {
                     Scheduler.high(() => {
                         entry.target.classList.remove('is-flipped');
@@ -382,11 +377,10 @@
         }
 
         window.handleSearch = (val) => {
-            State.searchQuery = val.trim(); // 保持大小写用于高亮匹配，但对比时转小写
+            State.searchQuery = val.trim();
             Scheduler.medium(renderEngine);
         };
 
-        // 高亮包裹函数
         const highlightText = (text, query) => {
             if (!query) return text;
             const regex = new RegExp(`(${query})`, 'gi');
@@ -458,10 +452,10 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-back" onclick="event.stopPropagation()">
-                        <div class="back-header" style="justify-content: center; letter-spacing: 4px;">拾光回音</div>
+                    <div class="card-back">
+                        <div class="back-header">拾光回音</div>
                         <div class="comments-list" id="comments-${p.id}">
-                            <div style="text-align:center; padding:20px; color:var(--text-muted); opacity:0.5;">拨开岁月的尘埃...</div>
+                            <div class="empty-comment-tip" style="opacity:0.5;">拨开岁月的尘埃...</div>
                         </div>
                         <div class="comment-input-box">
                             <input type="text" id="in-${p.id}" placeholder="落笔共鸣..." autocomplete="off">
@@ -476,23 +470,25 @@
         // 🎮 事件路由中心 (Event Routing & Haptics)
         // ==========================================
         document.addEventListener('click', async (e) => {
-            // 全局背景重置逻辑 (排他防御)
-            if (!e.target.closest('.card-inner') && !e.target.closest('.modal-box') && currentlyFlippedCard) {
+            const likeBtn = e.target.closest('[data-action="like"]');
+            const sendBtn = e.target.closest('[data-action="send"]');
+            const cardInner = e.target.closest('.card-inner');
+            const isBackSide = e.target.closest('.card-back');
+
+            // 1. 全局背景重置逻辑 (排他防御)
+            if (!cardInner && !e.target.closest('.modal-box') && currentlyFlippedCard) {
                 Scheduler.high(() => {
                     currentlyFlippedCard.classList.remove('is-flipped');
                     flipObserver.unobserve(currentlyFlippedCard);
                     currentlyFlippedCard = null;
                 });
+                return;
             }
 
-            const likeBtn = e.target.closest('[data-action="like"]');
-            const sendBtn = e.target.closest('[data-action="send"]');
-            const cardInner = e.target.closest('.card-inner');
-
-            // 1. 落叶点赞系统
+            // 2. 落叶点赞系统
             if (likeBtn) {
                 e.stopPropagation(); 
-                if (likeBtn.classList.contains('liked')) return; // 极简防连点
+                if (likeBtn.classList.contains('liked')) return; 
                 vibrate(15);
                 
                 const id = likeBtn.dataset.id;
@@ -504,7 +500,7 @@
                     likeBtn.classList.add('liked');
                     span.innerText = newLikes;
                     
-                    // 注入色散脉冲与浮动 +1 动画
+                    // 色散脉冲与浮动动画
                     const pulse = document.createElement('div'); pulse.className = 'pulse-ring';
                     const plusText = document.createElement('div'); plusText.className = 'float-plus'; plusText.innerText = '+1';
                     likeBtn.appendChild(pulse); likeBtn.appendChild(plusText);
@@ -512,12 +508,11 @@
                     setTimeout(() => { likeBtn.classList.remove('liked'); pulse.remove(); plusText.remove(); }, 800);
                 });
                 
-                // 调度低优先级进行云端持久化
                 Scheduler.low(() => appSupabase.from('photos').update({ likes: newLikes }).eq('id', id).then());
                 return;
             }
 
-            // 2. 留印与身份契约拦截
+            // 3. 留印与身份契约拦截
             if (sendBtn) {
                 e.stopPropagation();
                 const id = sendBtn.dataset.id;
@@ -527,7 +522,7 @@
                 const nickname = localStorage.getItem('nickname');
                 if (!nickname) {
                     pendingCommentAction = { id, content };
-                    vibrate([10, 30, 10]); // 提示感震动
+                    vibrate([10, 30, 10]); 
                     Scheduler.high(() => document.getElementById('identityModal').classList.add('show'));
                     return;
                 }
@@ -535,20 +530,24 @@
                 return;
             }
 
-            // 3. 正面翻转交互与预加载
-            if (cardInner && !cardInner.classList.contains('is-flipped')) {
-                e.stopPropagation(); vibrate(5);
-                Scheduler.high(() => {
-                    // 排他性合上
-                    if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
-                        currentlyFlippedCard.classList.remove('is-flipped');
-                        flipObserver.unobserve(currentlyFlippedCard);
-                    }
-                    cardInner.classList.add('is-flipped');
-                    currentlyFlippedCard = cardInner;
-                    flipObserver.observe(cardInner);
-                });
-                Scheduler.medium(() => loadComments(cardInner.dataset.id)); 
+            // 4. 正面翻转交互与背面防误触
+            if (cardInner) {
+                // 如果是背面点击非按钮区域，拦截事件防止翻转
+                if (isBackSide) return;
+
+                if (!cardInner.classList.contains('is-flipped')) {
+                    e.stopPropagation(); vibrate(5);
+                    Scheduler.high(() => {
+                        if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
+                            currentlyFlippedCard.classList.remove('is-flipped');
+                            flipObserver.unobserve(currentlyFlippedCard);
+                        }
+                        cardInner.classList.add('is-flipped');
+                        currentlyFlippedCard = cardInner;
+                        flipObserver.observe(cardInner);
+                    });
+                    Scheduler.medium(() => loadComments(cardInner.dataset.id)); 
+                }
             }
         });
 
@@ -576,16 +575,14 @@
 
         async function loadComments(id) {
             const list = document.getElementById(`comments-${id}`);
-            list.style.opacity = 0.5; 
             const { data, error } = await appSupabase.from('comments').select('*').eq('photo_id', id).order('created_at', { ascending: true });
             
             Scheduler.high(() => {
                 list.innerHTML = data?.length ? data.map(c => `
                     <div class="comment-item">
                         <span style="color:var(--accent-color); font-weight:700;">${c.nickname}</span><span style="color:var(--text-muted); margin:0 4px;">:</span><span style="color:var(--text-dark)">${c.content}</span>
-                    </div>`).join('') : '<div style="text-align:center; padding:30px 20px; color:var(--text-muted); font-style:italic;">信笺背面空空如也，留下第一道印记吧。</div>';
+                    </div>`).join('') : '<div class="empty-comment-tip">信笺背面空空如也，留下第一道印记吧。</div>';
                 list.scrollTop = list.scrollHeight;
-                list.style.opacity = 1;
             }); 
         }
 
