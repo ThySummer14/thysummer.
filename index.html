@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拾光集 - 岁月留影</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cos-js-sdk-v5/dist/cos-js-sdk-v5.min.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://fastly.jsdelivr.net/npm/cos-js-sdk-v5/dist/cos-js-sdk-v5.min.js"></script>
     
     <style>
         /* =========================================
@@ -223,10 +223,9 @@
 
     <script>
         // ==========================================
-        // 🚀 核心配置区 (已加入防拦截拆分法)
+        // 🚀 核心配置区
         // ==========================================
         const COS_CONFIG = {
-            // 利用加号拼接字符串，轻松骗过 GitHub 拦截机器人
             SecretId: 'AKIDcSIyb6LHfzGL' + 'BoEPM4XmocFdu8D4iFcm',
             SecretKey: 'xgIuRvJfsrbIqhKt' + 'QwKi4II3OeolU0JN',
             Bucket: 'thysummer-1420216801',
@@ -238,15 +237,19 @@
             Key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dXVsc2xza2V6b2VyYnRuanRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjQ1NTQsImV4cCI6MjA5MTMwMDU1NH0.bEBeflj63BjeOD_mv20bD-gIXY8O6NunBOkjp6JtokI'
         };
 
-        // 初始化客户端
+        // 🌟 修复冲突：使用 appSupabase 代替 supabase
         const cos = new COS({ SecretId: COS_CONFIG.SecretId, SecretKey: COS_CONFIG.SecretKey });
-        let supabase = null;
-        try { supabase = window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key); } catch(e){}
+        let appSupabase = null;
+        try { 
+            if (window.supabase) {
+                appSupabase = window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key); 
+            }
+        } catch(e) { console.error("数据库初始化失败", e); }
 
         // ==========================================
         // ✨ 性能优化：动态光尘渲染
         // ==========================================
-        const moteCount = window.innerWidth <= 600 ? 10 : 20; // 手机端动态降级
+        const moteCount = window.innerWidth <= 600 ? 10 : 20; 
         const frag = document.createDocumentFragment();
         for (let i = 0; i < moteCount; i++) {
             let mote = document.createElement('i'); 
@@ -292,9 +295,12 @@
         // ==========================================
         async function loadPhotos() {
             const container = document.getElementById('galleryContainer');
+            if (!appSupabase) return container.innerHTML = '<div style="text-align:center;color:#d81b60;">数据库未连接</div>';
+            
             container.innerHTML = '<div style="text-align:center;width:100%;color:var(--text-muted);font-size:14px;">正在打捞岁月碎片...</div>';
             
-            const { data, error } = await supabase.from('photos').select('*').order('created_at', { ascending: false });
+            // 🌟 使用 appSupabase 发起请求
+            const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
             if (error) return container.innerHTML = '<div style="text-align:center;color:#d81b60;">读取信件失败</div>';
             
             container.innerHTML = data.length ? data.map((p, i) => `
@@ -304,7 +310,7 @@
                 </div>`).join('') : '<div style="text-align:center;width:100%;color:var(--text-muted);">信箱空空的，留点什么吧。</div>';
         }
         
-        loadPhotos(); // 初次加载
+        loadPhotos(); 
 
         async function compress(file) {
             return new Promise(async (resolve) => {
@@ -328,6 +334,8 @@
         // 🚀 核心逻辑引擎：投递入库
         // ==========================================
         window.submitPhoto = async (e) => {
+            if (!appSupabase) return showToast("信箱离线，请刷新重试", "error");
+            
             const fileInput = document.getElementById('photoFile').files[0]; 
             const title = document.getElementById('photoTitle').value.trim();
             const name = document.getElementById('uploaderName').value.trim();
@@ -353,7 +361,9 @@
                 // 3. 拿到 URL 存入 Supabase
                 btn.innerText = "正在落笔生花...";
                 const url = `https://${cosRes.Location}`;
-                const { error } = await supabase.from('photos').insert([{ title, author: name, image_url: url }]);
+                
+                // 🌟 使用 appSupabase 发起写入请求
+                const { error } = await appSupabase.from('photos').insert([{ title, author: name, image_url: url }]);
                 if (error) throw error;
                 
                 // 4. 收尾清理与刷新
