@@ -2,14 +2,16 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>拾光集 - 岁月留影</title>
+    
+    <link rel="preconnect" href="https://fastly.jsdelivr.net">
     <script src="https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://fastly.jsdelivr.net/npm/cos-js-sdk-v5/dist/cos-js-sdk-v5.min.js"></script>
     
     <style>
         /* =========================================
-           1. 2026 Design Tokens (极简设计系统)
+           1. 2026 Design Tokens & 核心重置
            ========================================= */
         :root {
             --bg-base: #F7F9F8; 
@@ -17,192 +19,216 @@
             --text-muted: #8B9992; 
             --accent-color: #8CA192; 
             --accent-hover: #7A9080;
-            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-console: rgba(255, 255, 255, 0.65);
             --glass-border: rgba(255, 255, 255, 0.9);
-            --shadow-soft: 0 12px 30px rgba(0,0,0,0.03);
-            --shadow-hover: 0 20px 40px rgba(140, 161, 146, 0.12);
+            --shadow-soft: 0 12px 35px rgba(0,0,0,0.04);
+            --shadow-float: 0 25px 50px rgba(140, 161, 146, 0.15);
             --cubic-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --cubic-smooth: cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
         
         body {
-            margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', serif;
             background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%);
             color: var(--text-dark); min-height: 100vh; overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
+            -webkit-font-smoothing: antialiased; scroll-behavior: smooth;
         }
 
-        /* 硬件加速微光背景 */
-        #bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+        /* 硬件加速的全局微光背景 */
+        #bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; perspective: 1000px; }
         .mote {
             position: absolute; bottom: -10%; background: #fff; border-radius: 50%;
             opacity: 0; will-change: transform, opacity; animation: floatUp linear infinite;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
         }
         @keyframes floatUp {
             0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
             30% { opacity: 0.6; }
-            100% { transform: translate3d(15vw, -110vh, 0) scale(1.2); opacity: 0; }
+            100% { transform: translate3d(15vw, -120vh, 0) scale(1.5); opacity: 0; }
         }
 
         /* =========================================
-           2. 顶部导航与全局智能检索
+           2. 顶部悬浮中控台 (The Console)
            ========================================= */
-        header { position: relative; z-index: 10; padding: 50px 20px 30px; text-align: center; }
-        h1 { margin: 0; font-size: 34px; letter-spacing: 6px; font-weight: 500; }
-        .poetry-card {
-            background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border); border-radius: 20px; max-width: 600px;
-            margin: 20px auto; padding: 20px 25px; box-shadow: var(--shadow-soft);
-        }
+        header { position: relative; z-index: 20; padding: 50px 20px 30px; text-align: center; }
+        h1 { font-size: 36px; letter-spacing: 8px; font-weight: 500; text-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px; }
         
-        .search-box {
-            width: 100%; max-width: 300px; margin: 15px auto; padding: 10px 18px;
-            border: 1px solid var(--glass-border); border-radius: 50px; background: var(--glass-bg);
-            font-family: inherit; font-size: 14px; color: var(--text-dark); outline: none;
-            backdrop-filter: blur(10px); transition: 0.3s var(--cubic-bounce); text-align: center;
+        .console-capsule {
+            background: var(--glass-console); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 30px; max-width: 680px;
+            margin: 0 auto; padding: 20px 25px; box-shadow: var(--shadow-float);
+            display: flex; flex-direction: column; gap: 15px; align-items: center;
         }
-        .search-box:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(140, 161, 146, 0.1); width: 100%; max-width: 350px; background: #fff; }
 
-        .controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-        .btn {
-            background: var(--accent-color); color: white; border: none; padding: 10px 24px;
-            border-radius: 50px; font-size: 13px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25); outline: none;
-            transition: transform 0.3s var(--cubic-bounce), box-shadow 0.3s ease; will-change: transform;
+        /* 纯前端智能检索框 */
+        .search-box {
+            width: 100%; max-width: 340px; padding: 12px 20px; border: 1px solid rgba(140, 161, 146, 0.2);
+            border-radius: 50px; background: rgba(255,255,255,0.5); font-family: inherit; font-size: 14px;
+            color: var(--text-dark); outline: none; transition: all 0.4s var(--cubic-bounce); text-align: center;
         }
-        .btn-outline { background: var(--glass-bg); color: var(--text-dark); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); box-shadow: none; }
-        .btn:hover { transform: translate3d(0, -3px, 0); box-shadow: var(--shadow-hover); }
-        .btn:active { transform: translate3d(0, 1px, 0); }
+        .search-box:focus { background: #fff; border-color: var(--accent-color); max-width: 400px; box-shadow: 0 5px 20px rgba(140,161,146,0.15); }
+        .highlight { color: var(--accent-color); background: rgba(140,161,146,0.15); border-radius: 4px; padding: 0 2px; font-weight: 600; }
+
+        /* 旗舰级按钮组 */
+        .controls-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .btn-shiguang {
+            background: transparent; color: var(--text-dark); border: 1px solid rgba(140, 161, 146, 0.3);
+            padding: 10px 22px; border-radius: 50px; font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s var(--cubic-smooth); will-change: transform, box-shadow;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-shiguang.primary { background: var(--accent-color); color: white; border-color: transparent; box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25); }
+        .btn-shiguang:hover { transform: translate3d(0, -2px, 0); background: #fff; border-color: var(--accent-color); color: var(--accent-color); }
+        .btn-shiguang.primary:hover { background: var(--accent-hover); color: white; }
+        .btn-shiguang:active { transform: translate3d(0, 2px, 0); box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); } /* 物理下沉感 */
 
         /* =========================================
-           3. 视口渲染引擎 & 布局
+           3. 视口渲染引擎 & 岁月模式中轴
            ========================================= */
-        #main-container { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 20px 40px 80px; }
-        .view-gallery { column-count: 3; column-gap: 28px; }
+        #main-container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 20px 40px 100px; }
+        .view-gallery { column-count: 3; column-gap: 30px; }
         
         .view-timeline { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; }
-        .view-timeline::before { content: ''; position: absolute; width: 2px; background: rgba(140, 161, 146, 0.2); top: 0; bottom: 0; left: 50%; margin-left: -1px; z-index: 0; }
-        .time-badge { align-self: center; background: var(--glass-bg); padding: 8px 24px; border-radius: 50px; border: 1px solid var(--glass-border); font-size: 14px; font-weight: bold; margin: 40px 0 20px; z-index: 2; backdrop-filter: blur(10px); }
+        .view-timeline::before { content: ''; position: absolute; width: 2px; background: linear-gradient(to bottom, transparent, var(--accent-color), transparent); opacity: 0.3; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 0; }
+        .time-badge { align-self: center; background: rgba(255,255,255,0.9); padding: 8px 28px; border-radius: 50px; font-size: 14px; font-weight: 600; margin: 40px 0 20px; z-index: 2; border: 1px solid var(--accent-color); box-shadow: var(--shadow-soft); backdrop-filter: blur(10px); }
         .tl-row { display: flex; width: 100%; position: relative; z-index: 1; }
-        .tl-left, .tl-right { width: 50%; padding: 15px 30px; position: relative; }
+        .tl-left, .tl-right { width: 50%; padding: 15px 40px; position: relative; }
         .tl-right { margin-left: auto; }
-        .tl-row::after { content: ''; position: absolute; width: 10px; height: 10px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 40px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 10px rgba(140,161,146,0.2); }
+        .tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 45px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 15px rgba(140,161,146,0.4); }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 15px; letter-spacing: 1px; animation: fadeIn 0.8s ease; }
 
         /* =========================================
-           4. 极速视绸划入 & 明信片 3D 架构
+           4. 散落美学 & 极致 3D 架构
            ========================================= */
         .card-wrapper {
-            break-inside: avoid; margin-bottom: 28px;
-            opacity: 0; transform: translate3d(0, 30px, 0); 
-            transition: opacity 0.6s ease, transform 0.8s var(--cubic-bounce); will-change: opacity, transform;
+            break-inside: avoid; margin-bottom: 35px;
+            /* 散落美学：随机角度由 JS 注入 --random-angle */
+            transform: translate3d(0, 40px, 0) rotate(0deg); opacity: 0; 
+            transition: opacity 0.7s ease, transform 0.8s var(--cubic-bounce); 
+            will-change: opacity, transform; perspective: 1200px;
         }
-        .card-wrapper.is-visible { opacity: 1; transform: translate3d(0, 0, 0); }
+        .card-wrapper.is-visible { opacity: 1; transform: translate3d(0, 0, 0) rotate(var(--random-angle, 0deg)); }
 
-        .card-inner {
-            position: relative; width: 100%; transform-style: preserve-3d;
-            transition: transform 0.8s var(--cubic-bounce); will-change: transform; cursor: pointer;
-        }
+        .card-inner { position: relative; width: 100%; transform-style: preserve-3d; transition: transform 0.85s var(--cubic-bounce); cursor: pointer; border-radius: 18px; }
         .card-inner.is-flipped { transform: rotateY(180deg); }
-        @media (hover: hover) { .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.01); } }
+        @media (hover: hover) { .card-wrapper:hover .card-inner:not(.is-flipped) { transform: translate3d(0, -6px, 0) scale(1.02); box-shadow: var(--shadow-float); } }
 
         .card-front, .card-back {
-            position: relative; width: 100%; backface-visibility: hidden; border-radius: 16px;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border); box-shadow: var(--shadow-soft);
-            padding: 12px 12px 18px 12px; 
+            position: relative; width: 100%; backface-visibility: hidden; border-radius: 18px;
+            background: rgba(255,255,255,0.98); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border); box-shadow: var(--shadow-soft); padding: 14px 14px 20px 14px; 
         }
-        .card-back {
-            position: absolute; top: 0; left: 0; height: 100%; transform: rotateY(180deg);
-            display: flex; flex-direction: column; padding: 0; overflow: hidden;
-        }
+        .card-back { position: absolute; top: 0; left: 0; height: 100%; transform: rotateY(180deg); display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 
-        /* Blur-up 渐进式加载 & Anti-CLS */
+        /* Anti-CLS 渐进式渲染 (Blur-up) */
         .img-container { 
-            width: 100%; min-height: 200px; border-radius: 10px; overflow: hidden; 
-            background: rgba(140, 161, 146, 0.1); position: relative; 
-            display: flex; align-items: center; justify-content: center;
+            width: 100%; min-height: 220px; border-radius: 12px; overflow: hidden; 
+            background: linear-gradient(120deg, rgba(140,161,146,0.05), rgba(140,161,146,0.15)); 
+            position: relative; display: flex; align-items: center; justify-content: center;
         }
         .img-container img { 
-            width: 100%; height: auto; display: block; 
-            opacity: 0; transform: scale(0.95); 
-            transition: opacity 0.6s ease, transform 0.6s var(--cubic-bounce); 
+            width: 100%; height: auto; display: block; object-fit: cover;
+            opacity: 0; transform: scale(0.95); filter: blur(5px);
+            transition: opacity 0.8s ease, transform 0.8s var(--cubic-bounce), filter 0.6s ease; 
         }
-        .img-container img.loaded { opacity: 1; transform: scale(1); }
+        .img-container img.loaded { opacity: 1; transform: scale(1); filter: blur(0); }
 
-        .card-info { padding-top: 16px; position: relative; text-align: center; }
-        .card-title { margin: 0 0 6px; font-size: 15px; font-weight: bold; }
-        .card-author { margin: 0; font-size: 12px; color: var(--text-muted); }
-
-        /* 🍂 晨雾青落叶共鸣系统 */
-        .like-btn {
-            position: absolute; right: 0; bottom: 0; background: transparent; border: none;
-            display: flex; align-items: center; gap: 4px; color: var(--accent-color);
-            font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s;
-        }
-        .like-btn svg { transition: transform 0.4s var(--cubic-bounce), filter 0.4s ease; }
-        .like-btn.liked svg { 
-            animation: pulse-cyan 0.5s var(--cubic-bounce); 
-            filter: drop-shadow(0 0 6px rgba(140, 161, 146, 0.6));
-        }
-        @keyframes pulse-cyan {
-            0% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.4) rotate(-15deg); }
-            100% { transform: scale(1) rotate(0deg); }
-        }
-
-        /* 背面评论区 */
-        .back-header { padding: 16px; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: bold; color: var(--accent-color); }
-        .close-flip { background: rgba(140,161,146,0.1); border: none; padding: 4px 10px; border-radius: 20px; color: var(--accent-color); cursor: pointer; font-size: 12px; transition: 0.3s; }
-        .close-flip:hover { background: rgba(140,161,146,0.2); }
-        
-        .comments-list { flex: 1; padding: 16px; overflow-y: auto; font-size: 13px; scrollbar-width: none; text-align: left; transition: opacity 0.4s ease; }
-        .comments-list::-webkit-scrollbar { display: none; }
-        .comment-item { margin-bottom: 14px; line-height: 1.5; animation: fadeInUp 0.4s ease backwards; }
-        
-        .comment-input-box { padding: 12px; border-top: 1px solid rgba(0,0,0,0.04); display: flex; gap: 8px; background: #fff; }
-        .comment-input-box input { flex: 1; padding: 10px; border: 1px solid #E8EDE9; border-radius: 12px; font-size: 12px; outline: none; background: #F7F9F8; transition: 0.3s; }
-        .comment-input-box input:focus { border-color: var(--accent-color); background: #fff; }
-        .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 10px; padding: 0 16px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s;}
+        .card-info { padding-top: 18px; position: relative; text-align: center; }
+        .card-title { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--text-dark); line-height: 1.4; }
+        .card-author { margin: 0; font-size: 12px; color: var(--text-muted); font-style: italic; }
 
         /* =========================================
-           5. 全面屏自适应 & 音乐悬浮
+           5. 🍂 晨雾青落叶系统 (HDO-Leaf System)
+           ========================================= */
+        .like-btn {
+            position: absolute; right: 0; bottom: -2px; background: transparent; border: none;
+            display: flex; align-items: center; gap: 6px; color: var(--accent-color);
+            font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+        .like-btn svg { width: 18px; height: 18px; transition: transform 0.4s var(--cubic-bounce), filter 0.4s ease; transform-origin: bottom center; }
+        
+        /* 物理摇摆与色散脉冲 */
+        .like-btn.liked svg { transform: rotate(15deg) scale(1.2); filter: drop-shadow(0 4px 6px rgba(140, 161, 146, 0.4)); }
+        .pulse-ring {
+            position: absolute; left: 10px; top: 10px; width: 10px; height: 10px; border-radius: 50%;
+            background: transparent; pointer-events: none; transform: translate(-50%, -50%);
+            animation: chromaticPulse 0.8s ease-out forwards;
+        }
+        @keyframes chromaticPulse {
+            0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(140, 161, 146, 0.8), -2px 0 5px rgba(255,100,100,0.5), 2px 0 5px rgba(100,255,255,0.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(3.5); box-shadow: 0 0 20px 10px rgba(140, 161, 146, 0), -5px 0 10px rgba(255,100,100,0), 5px 0 10px rgba(100,255,255,0); opacity: 0; }
+        }
+        /* 浮动 +1 动画 */
+        .float-plus { position: absolute; right: 10px; top: -15px; color: var(--accent-color); font-weight: bold; font-size: 14px; pointer-events: none; animation: floatUpText 0.8s forwards var(--cubic-smooth); }
+        @keyframes floatUpText { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-25px) scale(1.2); } }
+
+        /* =========================================
+           6. 背面评论区与极简表单
+           ========================================= */
+        .back-header { padding: 18px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: var(--text-dark); background: rgba(140,161,146,0.05); }
+        .close-flip { background: #fff; border: 1px solid var(--glass-border); padding: 6px 14px; border-radius: 50px; color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .close-flip:hover { background: var(--accent-color); color: #fff; transform: scale(1.05); }
+        
+        .comments-list { flex: 1; padding: 20px; overflow-y: auto; font-size: 13px; scrollbar-width: none; text-align: left; }
+        .comments-list::-webkit-scrollbar { display: none; }
+        .comment-item { margin-bottom: 16px; line-height: 1.6; animation: fadeIn 0.5s ease backwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .comment-input-box { padding: 14px; border-top: 1px solid rgba(0,0,0,0.04); display: flex; gap: 10px; background: #fff; }
+        .comment-input-box input { flex: 1; padding: 12px 15px; border: 1px solid #E8EDE9; border-radius: 14px; font-size: 13px; outline: none; background: #F7F9F8; transition: 0.3s; }
+        .comment-input-box input:focus { border-color: var(--accent-color); background: #fff; box-shadow: 0 2px 10px rgba(140,161,146,0.1); }
+        .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 12px; padding: 0 18px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .comment-input-box button:active { transform: scale(0.95); }
+
+        /* =========================================
+           7. 移动端明信片呼吸边距与黑胶唱片
            ========================================= */
         @media (max-width: 900px) { .view-gallery { column-count: 2; column-gap: 20px; } }
         @media (max-width: 600px) { 
-            #main-container { padding: 10px 0 60px 0; } 
+            #main-container { padding: 10px 0 80px 0; } 
             .view-gallery { column-count: 1; }
-            .view-gallery .card-wrapper { margin: 0 16px 28px 16px; } 
+            .view-gallery .card-wrapper { margin: 0 18px 30px 18px; } /* 18px 手机端明信片边距 */
+            
             .view-timeline::before { left: 24px; }
             .tl-row { flex-direction: column; }
-            .tl-left, .tl-right { width: 100%; padding: 10px 16px 15px 50px; }
-            .tl-row::after { left: 24px; top: 35px; width: 10px; height: 10px; }
-            .time-badge { align-self: flex-start; margin-left: 24px; }
-            header h1 { font-size: 28px; }
+            .tl-left, .tl-right { width: 100%; padding: 15px 20px 15px 55px; }
+            .tl-row::after { left: 24px; top: 40px; width: 10px; height: 10px; }
+            .time-badge { margin-left: 24px; align-self: flex-start; }
+            header { padding: 40px 15px 20px; } h1 { font-size: 28px; }
         }
 
-        /* 唱片音乐播放器 */
-        .music-player { 
-            position: fixed; bottom: 30px; right: 30px; z-index: 999; width: 48px; height: 48px; 
-            border-radius: 50%; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.15); 
-            animation: spin 5s linear infinite; transition: transform 0.3s var(--cubic-bounce), filter 0.3s ease; 
-            will-change: transform, filter; background: #1a1a1a; display: flex; align-items: center; justify-content: center;
+        /* 惯性物理黑胶唱片 */
+        .music-disk { 
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 52px; height: 52px; 
+            border-radius: 50%; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            background: conic-gradient(#111, #333, #111, #333, #111); border: 3px solid rgba(255,255,255,0.9);
+            display: flex; align-items: center; justify-content: center;
+            animation: diskSpin 5s linear infinite; animation-play-state: paused;
+            transition: transform 0.6s var(--cubic-bounce), filter 0.8s ease, box-shadow 0.4s ease; 
         }
-        .music-player::after { content: ''; width: 14px; height: 14px; background: var(--accent-color); border-radius: 50%; border: 3px solid #F7F9F8;}
-        .music-player::before { content: ''; position:absolute; width: 38px; height: 38px; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; }
-        .music-player.paused { animation-play-state: paused; filter: grayscale(80%) opacity(0.7); }
-        .music-player:hover { transform: scale(1.08); }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .music-disk::before { content: ''; position: absolute; width: 14px; height: 14px; background: var(--accent-color); border-radius: 50%; border: 2px solid #fff; z-index: 2; }
+        .music-disk::after { content: ''; position: absolute; width: 40px; height: 40px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; }
+        .music-disk.playing { animation-play-state: running; filter: drop-shadow(0 0 10px rgba(140,161,146,0.5)); }
+        .music-disk:active { transform: scale(0.9); }
+        @keyframes diskSpin { to { transform: rotate(360deg); } }
 
-        /* 模态框与组件统一 */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.3s; will-change: opacity;}
+        /* =========================================
+           8. 统一高斯模糊模态框系统
+           ========================================= */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.4s ease; }
         .modal.show { opacity: 1; visibility: visible; }
-        .modal-box { background: rgba(255,255,255,0.98); padding: 35px 25px; border-radius: 24px; width: 88%; max-width: 340px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.15); transform: scale(0.95); transition: transform 0.4s var(--cubic-bounce); will-change: transform;}
-        .modal.show .modal-box { transform: scale(1); }
-        .input-box { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #E8EDE9; border-radius: 14px; background: #F7F9F8; text-align: center; outline: none; appearance: none; font-family: inherit; transition: 0.3s; }
-        .input-box:focus { border-color: var(--accent-color); background: #fff;}
-        .toast { position: fixed; top: 30px; left: 50%; transform: translate3d(-50%, -20px, 0); background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 30px; padding: 12px 24px; font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); opacity: 0; pointer-events: none; transition: 0.4s var(--cubic-bounce); z-index: 9999; will-change: transform, opacity; color: var(--text-dark); font-weight: 500;}
+        .modal-box { background: rgba(255,255,255,0.95); padding: 40px 30px; border-radius: 28px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 40px 80px rgba(0,0,0,0.2); transform: scale(0.95) translateY(20px); transition: 0.5s var(--cubic-bounce); border: 1px solid var(--glass-border); }
+        .modal.show .modal-box { transform: scale(1) translateY(0); }
+        
+        .input-box { width: 100%; padding: 15px; margin-bottom: 18px; border: 1px solid #E8EDE9; border-radius: 16px; background: #F7F9F8; text-align: center; outline: none; font-family: inherit; font-size: 14px; transition: 0.3s; }
+        .input-box:focus { border-color: var(--accent-color); background: #fff; box-shadow: 0 4px 15px rgba(140,161,146,0.1); }
+        
+        .toast { position: fixed; top: 40px; left: 50%; transform: translate3d(-50%, -20px, 0); background: rgba(255,255,255,0.95); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); border-radius: 50px; padding: 14px 28px; font-size: 14px; font-weight: 600; box-shadow: 0 15px 35px rgba(0,0,0,0.1); opacity: 0; pointer-events: none; transition: 0.5s var(--cubic-bounce); z-index: 9999; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
         .toast.show { opacity: 1; transform: translate3d(-50%, 0, 0); }
     </style>
 </head>
@@ -213,15 +239,14 @@
 
     <header>
         <h1>拾光集</h1>
-        <div class="poetry-card">
-            <div style="font-style: italic; color: var(--text-muted); font-size: 14px; margin-bottom: 8px;">"We do not remember days, we remember moments."</div>
-            <div style="font-size: 16px; letter-spacing: 2px; font-weight: 500;">岁月无声，唯有拾光。</div>
-            <input type="text" class="search-box" id="searchInput" placeholder="🔍 检索记忆 (标题/作者/月份)" oninput="handleSearch(this.value)">
-        </div>
-        <div class="controls">
-            <button class="btn btn-outline" id="modeBtn" onclick="toggleMode()">岁月模式</button>
-            <button class="btn" onclick="toggleUploadModal(true)">珍藏此刻 ✨</button>
-            <button class="btn btn-outline" onclick="exportData()" title="导出 JSON 备份">备份记忆 📦</button>
+        <div class="console-capsule">
+            <div style="font-size: 15px; letter-spacing: 1px; font-weight: 500;">岁月无声，唯有拾光。</div>
+            <input type="text" class="search-box" id="searchInput" placeholder="🔍 检索记忆碎片 (标题 / 作者 / 月份)" oninput="handleSearch(this.value)">
+            <div class="controls-row">
+                <button class="btn-shiguang" id="modeBtn" onclick="toggleMode()">🕰️ 岁月模式</button>
+                <button class="btn-shiguang primary" onclick="toggleUploadModal(true)">✨ 珍藏此刻</button>
+                <button class="btn-shiguang" onclick="exportData()" title="导出 JSON">📦 备份记忆</button>
+            </div>
         </div>
     </header>
 
@@ -229,31 +254,31 @@
 
     <div id="uploadModal" class="modal">
         <div class="modal-box">
-            <h3 style="margin: 0 0 20px; color: var(--accent-color);">时光信笺</h3>
-            <input type="file" id="photoFile" accept="image/*" class="input-box" style="border-style: dashed; padding: 10px; cursor: pointer;">
+            <h3 style="margin: 0 0 20px; color: var(--accent-color); letter-spacing: 2px;">时光信笺</h3>
+            <input type="file" id="photoFile" accept="image/*" class="input-box" style="border-style: dashed; cursor: pointer; padding: 12px;">
             <input type="text" id="photoTitle" placeholder="给这段回忆起个名字..." class="input-box" autocomplete="off">
             <input type="text" id="uploaderName" placeholder="你的署名" class="input-box" autocomplete="off">
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <button class="btn btn-outline" style="flex:1; padding: 12px 0;" onclick="toggleUploadModal(false)">收起</button>
-                <button class="btn" id="submitBtn" style="flex:1; padding: 12px 0;" onclick="submitPhoto(event)">封存</button>
+            <div style="display: flex; gap: 12px; margin-top: 10px;">
+                <button class="btn-shiguang" style="flex:1; justify-content:center;" onclick="toggleUploadModal(false)">收起</button>
+                <button class="btn-shiguang primary" id="submitBtn" style="flex:1; justify-content:center;" onclick="submitPhoto(event)">封存</button>
             </div>
         </div>
     </div>
 
-    <div id="identityModal" class="modal" style="z-index: 1001;">
+    <div id="identityModal" class="modal" style="z-index: 2001;">
         <div class="modal-box">
-            <h3 style="margin: 0 0 15px; color: var(--accent-color); font-size: 16px;">时光旅人</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">请留下你的名号<br>让这声回音有迹可循</p>
+            <h3 style="margin: 0 0 15px; color: var(--accent-color); font-size: 18px; letter-spacing: 2px;">时光旅人</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 25px; line-height: 1.6;">初次相遇，请留下你的名号。<br>让每一次回音都有迹可循。</p>
             <input type="text" id="identityName" placeholder="怎么称呼你？" class="input-box" autocomplete="off">
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('identityModal').classList.remove('show'); pendingCommentAction = null;">取消</button>
-                <button class="btn" style="flex:1;" onclick="confirmIdentity()">缔结契约</button>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-shiguang" style="flex:1; justify-content:center;" onclick="document.getElementById('identityModal').classList.remove('show'); pendingCommentAction = null;">暂不</button>
+                <button class="btn-shiguang primary" style="flex:1; justify-content:center;" onclick="confirmIdentity()">缔结契约</button>
             </div>
         </div>
     </div>
 
     <audio id="bgMusic" loop preload="auto"><source src="xvni.mp3" type="audio/mpeg"></audio>
-    <div id="musicBtn" class="music-player paused" onclick="toggleMusic()" title="播放音乐"></div>
+    <div id="musicBtn" class="music-disk" onclick="toggleMusic()" title="轻触播放音乐"></div>
 
     <script>
         // ==========================================
@@ -261,20 +286,21 @@
         // ==========================================
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'shiguang-v1';
+                const CACHE_NAME = 'shiguang-v2026';
                 self.addEventListener('fetch', e => {
-                    if (e.request.method !== 'GET' || e.request.url.includes('supabase')) return;
+                    // 放行 Supabase 与云端存储请求，仅缓存静态骨架与图片资源
+                    if (e.request.method !== 'GET' || e.request.url.includes('supabase.co')) return;
                     e.respondWith(caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
                         return caches.open(CACHE_NAME).then(cache => { cache.put(e.request, fetchRes.clone()); return fetchRes; });
-                    })));
+                    }).catch(()=>{}))); // 离线静默处理
                 });
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => console.log('SW 注册跳过'));
         }
 
         // ==========================================
-        // ⚙️ 核心架构配置
+        // ⚙️ 核心架构与后端配置
         // ==========================================
         const COS_CONFIG = {
             SecretId: 'AKIDcSIyb6LHfzGL' + 'BoEPM4XmocFdu8D4iFcm',
@@ -290,30 +316,40 @@
         const appSupabase = window.supabase?.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
 
         // ==========================================
-        // 🧠 三级任务调度器 (Task Scheduler)
+        // 🧠 三级任务调度引擎 (High-Fidelity Scheduler)
         // ==========================================
         const Scheduler = {
+            // 锁定 60fps：DOM 渲染、3D翻转、点赞物理反馈
             high: (task) => requestAnimationFrame(task),
+            // 微小延迟：内存过滤、评论拉取
             medium: (task) => queueMicrotask(task),
-            low: (task) => ('requestIdleCallback' in window) ? requestIdleCallback(task) : setTimeout(task, 100)
+            // 绝对空闲：JSON 导出、数据持久化同步
+            low: (task) => ('requestIdleCallback' in window) ? requestIdleCallback(task) : setTimeout(task, 200)
         };
 
-        // 触觉反馈 Helper
-        const vibrate = (ms = 20) => navigator.vibrate?.(ms);
+        // 硬件触觉反馈 (Haptics)
+        const vibrate = (ms = 20) => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
 
         // ==========================================
-        // 🛡️ 状态机与保护引擎
+        // 🛡️ 移动端状态机与 Anti-Jank 视口防御
         // ==========================================
         const State = { photos: [], currentMode: 'gallery', searchQuery: '' };
         let currentlyFlippedCard = null;
         let pendingCommentAction = null; 
         
-        // 键盘锁 (Anti-Flip Bug)
-        let isKeyboardActive = false;
-        document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = true; });
-        document.addEventListener('focusout', (e) => { if (e.target.tagName === 'INPUT') isKeyboardActive = false; });
+        // 核心：软键盘唤起锁 (Keyboard Lock)
+        let isViewportLocked = false;
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                // 若视口高度急剧缩小，认定键盘弹起，冻结卡片自动翻转逻辑
+                isViewportLocked = window.visualViewport.height < window.innerHeight - 150;
+            });
+        }
+        // 双重保险：Focus 探针
+        document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') isViewportLocked = true; });
+        document.addEventListener('focusout', (e) => { if (e.target.tagName === 'INPUT') isViewportLocked = false; });
 
-        // 视绸加载 (Anti-CLS)
+        // 视绸划入监测 (Blur-up trigger)
         const appearObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -323,10 +359,11 @@
             });
         }, { threshold: 0.1, rootMargin: '50px' });
 
-        // 视口复位保护
+        // 视口保护复位 (Intelligent Flip Control)
         const flipObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (!entry.isIntersecting && !isKeyboardActive && entry.target.classList.contains('is-flipped')) {
+                // 滑出视口 80% 且未唤起键盘时，优雅合上
+                if (!entry.isIntersecting && !isViewportLocked && entry.target.classList.contains('is-flipped')) {
                     Scheduler.high(() => {
                         entry.target.classList.remove('is-flipped');
                         if (currentlyFlippedCard === entry.target) currentlyFlippedCard = null;
@@ -337,44 +374,48 @@
         }, { threshold: 0.2 });
 
         // ==========================================
-        // ✨ 数据挂载与双模渲染引擎
+        // ✨ 数据总线与前端模糊检索 (Fuzzy Search)
         // ==========================================
         async function loadData() {
-            if (!appSupabase) return showToast("云端连接失败", "error");
+            if (!appSupabase) return showToast("云端连接异常，请检查网络", "error");
             const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
-            if (error) return showToast("打捞碎片失败", "error");
+            if (error) return showToast("碎片打捞失败", "error");
             State.photos = data;
-            renderEngine();
+            Scheduler.medium(renderEngine);
         }
 
-        // 前端纯内存实时过滤
         window.handleSearch = (val) => {
-            State.searchQuery = val.toLowerCase().trim();
+            State.searchQuery = val.trim(); // 保持大小写用于高亮匹配，但对比时转小写
             Scheduler.medium(renderEngine);
+        };
+
+        // 高亮包裹函数
+        const highlightText = (text, query) => {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
         };
 
         function renderEngine() {
             const container = document.getElementById('main-container');
             container.className = State.currentMode === 'gallery' ? 'view-gallery' : 'view-timeline';
             
-            // 过滤数据
+            const q = State.searchQuery.toLowerCase();
             const filteredPhotos = State.photos.filter(p => {
-                if (!State.searchQuery) return true;
+                if (!q) return true;
                 const d = new Date(p.created_at);
                 const monthStr = `${d.getFullYear()}年 ${String(d.getMonth()+1).padStart(2,'0')}月`;
-                return p.title.toLowerCase().includes(State.searchQuery) || 
-                       p.author.toLowerCase().includes(State.searchQuery) || 
-                       monthStr.includes(State.searchQuery);
+                return p.title.toLowerCase().includes(q) || p.author.toLowerCase().includes(q) || monthStr.includes(q);
             });
 
             if (filteredPhotos.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding: 50px; color: var(--text-muted);">暂无相关的记忆碎片...</div>';
+                container.innerHTML = '<div class="empty-state">🍂 未能在岁月的长河里打捞到此碎片...</div>';
                 return;
             }
 
             let html = '';
             if (State.currentMode === 'gallery') {
-                html = filteredPhotos.map(p => createCardHTML(p, 'card-wrapper')).join('');
+                html = filteredPhotos.map(p => createCardHTML(p, 'card-wrapper', q)).join('');
             } else {
                 const grouped = filteredPhotos.reduce((acc, p) => {
                     const d = new Date(p.created_at);
@@ -383,33 +424,38 @@
                 }, {});
                 
                 for (const [month, list] of Object.entries(grouped)) {
-                    html += `<div class="time-badge">${month}</div>`;
+                    html += `<div class="time-badge">${highlightText(month, State.searchQuery)}</div>`;
                     for (let i = 0; i < list.length; i += 2) {
                         html += `<div class="tl-row">
-                            <div class="tl-left">${createCardHTML(list[i], 'card-wrapper')}</div>
-                            ${list[i+1] ? `<div class="tl-right">${createCardHTML(list[i+1], 'card-wrapper')}</div>` : ''}
+                            <div class="tl-left">${createCardHTML(list[i], 'card-wrapper', q)}</div>
+                            ${list[i+1] ? `<div class="tl-right">${createCardHTML(list[i+1], 'card-wrapper', q)}</div>` : ''}
                         </div>`;
                     }
                 }
             }
             container.innerHTML = html;
-            document.querySelectorAll('.card-wrapper').forEach(el => appearObserver.observe(el));
+            Scheduler.high(() => document.querySelectorAll('.card-wrapper').forEach(el => appearObserver.observe(el)));
         }
 
-        function createCardHTML(p, wrapperClass) {
-            // 🍂 文艺修正版落叶 SVG
-            const leafIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.17 2.02c-.17.01-.35.03-.52.06-1.54.26-3.08 1.05-4.32 2.29-1.24 1.24-2.03 2.78-2.29 4.32-.26 1.54.03 3.12.83 4.47l-3.32 3.32c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.32-3.32c1.35.8 2.93 1.09 4.47.83 1.54-.26 3.08-1.05 4.32-2.29 1.24-1.24 2.03-2.78 2.29-4.32.26-1.54-.03-3.12-.83-4.47l.5-.5c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-.5.5c-1.04-.62-2.26-.95-3.48-.97zM11 9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg>`;
+        function createCardHTML(p, wrapperClass, query) {
+            // 散落美学：赋予随机 ±1.5度 物理偏转
+            const randomAngle = (Math.random() * 3 - 1.5).toFixed(2);
+            // 🍂 文艺重构版落叶 SVG
+            const leafIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.17 2.02c-.17.01-.35.03-.52.06-1.54.26-3.08 1.05-4.32 2.29-1.24 1.24-2.03 2.78-2.29 4.32-.26 1.54.03 3.12.83 4.47l-3.32 3.32c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.32-3.32c1.35.8 2.93 1.09 4.47.83 1.54-.26 3.08-1.05 4.32-2.29 1.24-1.24 2.03-2.78 2.29-4.32.26-1.54-.03-3.12-.83-4.47l.5-.5c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-.5.5c-1.04-.62-2.26-.95-3.48-.97zM11 9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg>`;
             
+            const displayTitle = highlightText(p.title, State.searchQuery);
+            const displayAuthor = highlightText(p.author, State.searchQuery);
+
             return `
-            <div class="${wrapperClass}">
+            <div class="${wrapperClass}" style="--random-angle: ${randomAngle}deg;">
                 <div class="card-inner" data-id="${p.id}">
                     <div class="card-front">
                         <div class="img-container">
                             <img src="${p.image_url}" loading="lazy" onload="Scheduler.high(() => this.classList.add('loaded'))">
                         </div>
                         <div class="card-info">
-                            <p class="card-title">${p.title}</p>
-                            <p class="card-author">@${p.author}</p>
+                            <p class="card-title">${displayTitle}</p>
+                            <p class="card-author">@${displayAuthor}</p>
                             <button class="like-btn" data-action="like" data-id="${p.id}">
                                 ${leafIcon} <span>${p.likes || 0}</span>
                             </button>
@@ -418,7 +464,7 @@
                     <div class="card-back" onclick="event.stopPropagation()">
                         <div class="back-header">拾光回音 <button class="close-flip" data-action="close">合上</button></div>
                         <div class="comments-list" id="comments-${p.id}">
-                            <div style="text-align:center; padding:20px; color:var(--text-muted); opacity:0.6">翻阅中...</div>
+                            <div style="text-align:center; padding:20px; color:var(--text-muted); opacity:0.5;">拨开岁月的尘埃...</div>
                         </div>
                         <div class="comment-input-box">
                             <input type="text" id="in-${p.id}" placeholder="落笔共鸣..." autocomplete="off">
@@ -430,14 +476,16 @@
         }
 
         // ==========================================
-        // 🎮 纯净事件路由中心 (Zero Bug Guarantee)
+        // 🎮 事件路由中心 (Event Routing & Haptics)
         // ==========================================
         document.addEventListener('click', async (e) => {
-            // 全局空白处无感复位
+            // 全局背景重置逻辑 (排他防御)
             if (!e.target.closest('.card-inner') && !e.target.closest('.modal-box') && currentlyFlippedCard) {
-                Scheduler.high(() => currentlyFlippedCard.classList.remove('is-flipped'));
-                flipObserver.unobserve(currentlyFlippedCard);
-                currentlyFlippedCard = null;
+                Scheduler.high(() => {
+                    currentlyFlippedCard.classList.remove('is-flipped');
+                    flipObserver.unobserve(currentlyFlippedCard);
+                    currentlyFlippedCard = null;
+                });
             }
 
             const likeBtn = e.target.closest('[data-action="like"]');
@@ -445,35 +493,45 @@
             const closeBtn = e.target.closest('[data-action="close"]');
             const cardInner = e.target.closest('.card-inner');
 
-            // 1. 点赞系统 (High Priority)
+            // 1. 落叶点赞系统
             if (likeBtn) {
                 e.stopPropagation(); 
+                if (likeBtn.classList.contains('liked')) return; // 极简防连点
                 vibrate(15);
+                
                 const id = likeBtn.dataset.id;
                 const span = likeBtn.querySelector('span');
                 let currentLikes = parseInt(span.innerText) || 0;
+                const newLikes = currentLikes + 1;
                 
                 Scheduler.high(() => {
                     likeBtn.classList.add('liked');
-                    span.innerText = currentLikes + 1;
-                    setTimeout(() => likeBtn.classList.remove('liked'), 600);
+                    span.innerText = newLikes;
+                    
+                    // 注入色散脉冲与浮动 +1 动画
+                    const pulse = document.createElement('div'); pulse.className = 'pulse-ring';
+                    const plusText = document.createElement('div'); plusText.className = 'float-plus'; plusText.innerText = '+1';
+                    likeBtn.appendChild(pulse); likeBtn.appendChild(plusText);
+                    
+                    setTimeout(() => { likeBtn.classList.remove('liked'); pulse.remove(); plusText.remove(); }, 800);
                 });
                 
-                // Low Priority DB Sync
-                Scheduler.low(() => appSupabase.from('photos').update({ likes: currentLikes + 1 }).eq('id', id).then());
+                // 调度低优先级进行云端持久化
+                Scheduler.low(() => appSupabase.from('photos').update({ likes: newLikes }).eq('id', id).then());
                 return;
             }
 
-            // 2. 评论与契约
+            // 2. 留印与身份契约拦截
             if (sendBtn) {
                 e.stopPropagation();
                 const id = sendBtn.dataset.id;
                 const content = document.getElementById(`in-${id}`).value.trim();
-                if (!content) return;
+                if (!content) return vibrate(10);
                 
                 const nickname = localStorage.getItem('nickname');
                 if (!nickname) {
                     pendingCommentAction = { id, content };
+                    vibrate([10, 30, 10]); // 提示感震动
                     Scheduler.high(() => document.getElementById('identityModal').classList.add('show'));
                     return;
                 }
@@ -481,7 +539,7 @@
                 return;
             }
 
-            // 3. 关闭翻转
+            // 3. 关闭翻转背板
             if (closeBtn) {
                 e.stopPropagation();
                 Scheduler.high(() => {
@@ -492,10 +550,11 @@
                 return;
             }
 
-            // 4. 正面翻转预加载
+            // 4. 正面翻转交互与预加载
             if (cardInner && !cardInner.classList.contains('is-flipped')) {
-                e.stopPropagation();
+                e.stopPropagation(); vibrate(5);
                 Scheduler.high(() => {
+                    // 排他性合上
                     if (currentlyFlippedCard && currentlyFlippedCard !== cardInner) {
                         currentlyFlippedCard.classList.remove('is-flipped');
                         flipObserver.unobserve(currentlyFlippedCard);
@@ -509,13 +568,13 @@
         });
 
         // ==========================================
-        // 💬 回音逻辑与数据导出
+        // 💬 回音系统与本地导出模块
         // ==========================================
         async function executeComment(id, nickname, content) {
             const input = document.getElementById(`in-${id}`);
-            input.value = '投递中...'; input.disabled = true;
+            Scheduler.high(() => { input.value = '投递中...'; input.disabled = true; });
             const { error } = await appSupabase.from('comments').insert([{ photo_id: id, nickname, content }]);
-            input.value = ''; input.disabled = false;
+            Scheduler.high(() => { input.value = ''; input.disabled = false; });
             if (!error) loadComments(id);
         }
 
@@ -523,7 +582,7 @@
             const name = document.getElementById('identityName').value.trim();
             if (!name) return showToast('契约需留名哦', 'error');
             localStorage.setItem('nickname', name);
-            document.getElementById('identityModal').classList.remove('show');
+            Scheduler.high(() => document.getElementById('identityModal').classList.remove('show'));
             if (pendingCommentAction) {
                 executeComment(pendingCommentAction.id, name, pendingCommentAction.content);
                 pendingCommentAction = null;
@@ -532,33 +591,31 @@
 
         async function loadComments(id) {
             const list = document.getElementById(`comments-${id}`);
-            list.style.opacity = 0.5; 
             const { data, error } = await appSupabase.from('comments').select('*').eq('photo_id', id).order('created_at', { ascending: true });
             
             Scheduler.high(() => {
                 list.innerHTML = data?.length ? data.map(c => `
                     <div class="comment-item">
-                        <span style="color:var(--accent-color); font-weight:600;">${c.nickname}</span>：<span style="color:#555">${c.content}</span>
-                    </div>`).join('') : '<div style="text-align:center; padding:20px; color:var(--text-muted);">信笺背面空空如也，留下第一道印记吧。</div>';
-                list.style.opacity = 1;
+                        <span style="color:var(--accent-color); font-weight:700;">${c.nickname}</span><span style="color:var(--text-muted); margin:0 4px;">:</span><span style="color:var(--text-dark)">${c.content}</span>
+                    </div>`).join('') : '<div style="text-align:center; padding:30px 20px; color:var(--text-muted); font-style:italic;">信笺背面空空如也，留下第一道印记吧。</div>';
                 list.scrollTop = list.scrollHeight;
             }); 
         }
 
         window.exportData = () => {
             Scheduler.low(() => {
-                vibrate(30);
-                const blob = new Blob([JSON.stringify(State.photos, null, 2)], { type: 'application/json' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `拾光集_备份_${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                showToast('记忆已安全打包', 'success');
+                vibrate([20, 20, 20]);
+                const exportObj = { version: '2026.1', timestamp: new Date().toISOString(), memory_fragments: State.photos };
+                const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = `拾光集_时光档案_${new Date().toISOString().split('T')[0]}.json`;
+                a.click(); URL.revokeObjectURL(a.href);
+                showToast('记忆已安全打包并下发至本地', 'success');
             });
         };
 
         // ==========================================
-        // 🚀 OffscreenCanvas 离屏图片压缩
+        // 🚀 离屏图像处理引擎 (Offscreen Compression)
         // ==========================================
         async function compressImage(file) {
             const bitmap = await createImageBitmap(file);
@@ -588,39 +645,40 @@
             
             try {
                 const finalFile = await compressImage(file);
-                btn.innerText = "跨越星海...";
+                Scheduler.high(() => btn.innerText = "跨越星海...");
+                
                 const path = `photos/${Date.now()}.webp`;
                 const cosRes = await new Promise((res, rej) => cos.putObject({ Bucket: COS_CONFIG.Bucket, Region: COS_CONFIG.Region, Key: path, Body: finalFile }, (err, data) => err ? rej(err) : res(data)));
                 
-                btn.innerText = "落笔生花...";
+                Scheduler.high(() => btn.innerText = "落笔生花...");
                 await appSupabase.from('photos').insert([{ title, author: name, image_url: `https://${cosRes.Location}` }]);
                 
-                showToast("信笺已封存", "success"); vibrate(30);
+                showToast("信笺已封存", "success"); vibrate([20, 40, 20]);
                 toggleUploadModal(false); loadData();
             } catch (err) { showToast("星空拥堵，请重试", "error"); }
-            finally { btn.disabled = false; btn.innerText = "封存"; }
+            finally { Scheduler.high(() => { btn.disabled = false; btn.innerText = "封存"; }); }
         };
 
         // ==========================================
-        // 🎛️ UI 控制与动效注入
+        // 🎛️ 辅助控制中枢与黑胶物理机
         // ==========================================
         window.toggleMode = () => {
             vibrate(15);
             State.currentMode = State.currentMode === 'gallery' ? 'timeline' : 'gallery';
-            document.getElementById('modeBtn').innerText = State.currentMode === 'gallery' ? '岁月模式' : '画廊模式';
-            renderEngine();
+            document.getElementById('modeBtn').innerText = State.currentMode === 'gallery' ? '🕰️ 岁月模式' : '🖼️ 画廊模式';
+            Scheduler.medium(renderEngine);
         };
 
         window.toggleUploadModal = (show) => {
-            const m = document.getElementById('uploadModal');
-            if (show) { m.classList.add('show'); document.getElementById('uploaderName').value = localStorage.getItem('nickname') || ''; }
-            else { m.classList.remove('show'); document.getElementById('photoFile').value=''; document.getElementById('photoTitle').value=''; }
+            vibrate(10); const m = document.getElementById('uploadModal');
+            if (show) { Scheduler.high(() => m.classList.add('show')); document.getElementById('uploaderName').value = localStorage.getItem('nickname') || ''; }
+            else { Scheduler.high(() => m.classList.remove('show')); document.getElementById('photoFile').value=''; document.getElementById('photoTitle').value=''; }
         };
 
         window.toggleMusic = () => {
             vibrate(10);
             const m = document.getElementById('bgMusic'), btn = document.getElementById('musicBtn');
-            m.paused ? m.play().then(() => btn.classList.remove('paused')).catch(()=>showToast('需先交互页面才能播放')) : (m.pause(), btn.classList.add('paused'));
+            m.paused ? m.play().then(() => Scheduler.high(() => btn.classList.add('playing'))).catch(()=>showToast('需先轻触页面唤醒音频机制')) : (m.pause(), Scheduler.high(() => btn.classList.remove('playing')));
         };
 
         let tTimer; window.showToast = (msg, type='info') => {
@@ -628,17 +686,17 @@
             Scheduler.high(() => { t.classList.add('show'); clearTimeout(tTimer); tTimer = setTimeout(()=>t.classList.remove('show'), 2500); });
         };
 
-        // 背景粒子注入
+        // 生成硬件加速的光尘粒子
         const frag = document.createDocumentFragment();
-        for(let i=0; i<(window.innerWidth<=600?10:18); i++){
+        for(let i=0; i<(window.innerWidth<=600?12:20); i++){
             const m = document.createElement('i'); m.className='mote';
             m.style.width=m.style.height=(Math.random()*4+2)+'px';
-            m.style.left=Math.random()*100+'vw'; m.style.animationDuration=(Math.random()*8+6)+'s';
-            m.style.animationDelay=Math.random()*5+'s'; frag.appendChild(m);
+            m.style.left=Math.random()*100+'vw'; m.style.animationDuration=(Math.random()*10+8)+'s';
+            m.style.animationDelay=Math.random()*6+'s'; frag.appendChild(m);
         }
         document.getElementById('bg-fx').appendChild(frag);
         
-        // 启动引擎
+        // 引擎点火
         loadData();
     </script>
 </body>
