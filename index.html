@@ -9,7 +9,7 @@
     
     <style>
         /* =========================================
-           1. 全局设计系统与极简变量
+           1. 极简设计系统 (Design Token)
            ========================================= */
         :root {
             --bg-base: #F7F9F8; 
@@ -17,174 +17,148 @@
             --text-muted: #8B9992; 
             --accent-color: #8CA192; 
             --accent-hover: #7A9080;
-            --glass-bg: rgba(255, 255, 255, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.8);
-            --shadow-soft: 0 15px 35px rgba(0,0,0,0.03);
-            --shadow-hover: 0 20px 40px rgba(140, 161, 146, 0.15);
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.85);
+            --shadow-soft: 0 15px 35px rgba(0,0,0,0.04);
+            --shadow-hover: 0 25px 45px rgba(140, 161, 146, 0.15);
+            --cubic-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
+        
         body {
             margin: 0; padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', 'Songti SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', serif;
             background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%);
-            color: var(--text-dark);
-            min-height: 100vh; overflow-x: hidden;
-            background-attachment: fixed;
+            color: var(--text-dark); min-height: 100vh; overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* =========================================
-           2. 硬件加速背景层 (60fps 飘尘)
-           ========================================= */
-        #bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; perspective: 1000px; }
+        /* 背景微光粒子 (GPU 加速) */
+        #bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
         .mote {
-            position: absolute; bottom: -10%;
-            background: rgba(255, 255, 255, 0.85);
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            opacity: 0;
-            will-change: transform, opacity;
-            animation: floatUp linear infinite;
+            position: absolute; bottom: -10%; background: #fff; border-radius: 50%;
+            opacity: 0; will-change: transform, opacity; animation: floatUp linear infinite;
         }
         @keyframes floatUp {
             0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
-            20% { opacity: 0.5; }
-            80% { opacity: 0.5; }
-            100% { transform: translate3d(10vw, -110vh, 0) scale(1.2); opacity: 0; }
+            30% { opacity: 0.6; }
+            100% { transform: translate3d(15vw, -110vh, 0) scale(1.2); opacity: 0; }
         }
 
         /* =========================================
-           3. 核心 UI 组件
+           2. 顶部导航与全局交互
            ========================================= */
-        header { position: relative; z-index: 10; padding: 50px 20px 20px; text-align: center; }
+        header { position: relative; z-index: 10; padding: 60px 20px 30px; text-align: center; }
         h1 { margin: 0; font-size: 34px; letter-spacing: 6px; font-weight: 500; }
-
         .poetry-card {
             background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border); border-radius: 24px;
-            max-width: 600px; margin: 24px auto; padding: 32px 24px;
-            box-shadow: 0 20px 40px rgba(140, 161, 146, 0.08);
+            border: 1px solid var(--glass-border); border-radius: 24px; max-width: 600px;
+            margin: 24px auto; padding: 25px; box-shadow: var(--shadow-soft);
         }
-        .poetry-en { font-style: italic; font-size: 14px; color: var(--text-muted); margin-bottom: 8px; }
-        .poetry-zh { font-size: 17px; letter-spacing: 2px; line-height: 1.8; }
-
+        
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
         .btn {
-            background: var(--accent-color); color: white; border: none; font-family: inherit;
-            padding: 12px 32px; border-radius: 50px; font-size: 15px; letter-spacing: 1px; cursor: pointer;
-            box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25);
-            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s ease, box-shadow 0.3s ease;
-            outline: none; will-change: transform;
-        }
-        .btn:hover { background: var(--accent-hover); transform: translate3d(0, -2px, 0); box-shadow: 0 12px 25px rgba(140, 161, 146, 0.35); }
-        .btn:active { transform: translate3d(0, 1px, 0); }
-        .btn:disabled { background: #B3C0B8; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        /* =========================================
-           4. 响应式瀑布流与骨架过渡
-           ========================================= */
-        .gallery {
-            position: relative; z-index: 10; column-count: 3; column-gap: 24px;
-            padding: 20px 40px 80px; max-width: 1200px; margin: 0 auto;
-        }
-        .card {
-            break-inside: avoid; margin-bottom: 24px; 
-            background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border); padding: 12px 12px 18px;
-            border-radius: 20px; box-shadow: var(--shadow-soft);
-            animation: fadeInUp 0.6s ease-out backwards;
-            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            background: var(--accent-color); color: white; border: none; padding: 12px 28px;
+            border-radius: 50px; font-size: 14px; letter-spacing: 1px; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(140, 161, 146, 0.25); outline: none;
+            transition: transform 0.3s var(--cubic-bounce), box-shadow 0.3s ease;
             will-change: transform;
         }
-        @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 20px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-        .card:hover { transform: translate3d(0, -4px, 0); box-shadow: var(--shadow-hover); }
+        .btn-outline { background: var(--glass-bg); color: var(--text-dark); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); box-shadow: none; }
+        .btn:hover { transform: translate3d(0, -3px, 0); box-shadow: var(--shadow-hover); }
+        .btn:active { transform: translate3d(0, 1px, 0); }
 
-        .card img { 
-            width: 100%; display: block; border-radius: 12px; object-fit: cover; 
-            background: linear-gradient(90deg, #E8EDE9 25%, #FAFCFA 50%, #E8EDE9 75%);
-            background-size: 200% 100%; animation: skeletonLoading 1.5s infinite;
-            min-height: 200px; opacity: 0; transition: opacity 0.4s ease-out; 
-            will-change: opacity;
+        /* =========================================
+           3. 双模渲染引擎 (瀑布流 & 时间轴)
+           ========================================= */
+        #main-container { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 20px 40px 80px; transition: opacity 0.4s ease; }
+        
+        /* 画廊模式 */
+        .view-gallery { column-count: 3; column-gap: 24px; }
+        .view-gallery .card-wrapper { break-inside: avoid; margin-bottom: 24px; }
+        
+        /* 岁月模式 */
+        .view-timeline { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; }
+        .view-timeline::before { content: ''; position: absolute; width: 2px; background: rgba(140, 161, 146, 0.2); top: 0; bottom: 0; left: 50%; margin-left: -1px; z-index: 0; }
+        .time-badge { align-self: center; background: var(--glass-bg); padding: 8px 24px; border-radius: 50px; border: 1px solid var(--glass-border); font-size: 15px; font-weight: bold; margin: 40px 0 20px; z-index: 2; backdrop-filter: blur(10px); }
+        .tl-row { display: flex; width: 100%; position: relative; z-index: 1; }
+        .tl-left, .tl-right { width: 50%; padding: 15px 30px; position: relative; }
+        .tl-right { margin-left: auto; }
+        .tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 40px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 10px rgba(140,161,146,0.3); }
+
+        /* =========================================
+           4. 3D 卡片引擎与交互回音 (硬件级加速)
+           ========================================= */
+        .card-inner {
+            position: relative; width: 100%; min-height: 200px; transform-style: preserve-3d;
+            transition: transform 0.8s var(--cubic-bounce); will-change: transform; cursor: pointer;
         }
-        .card img.loaded { opacity: 1; animation: none; background: transparent; }
-        @keyframes skeletonLoading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .card-inner.is-flipped { transform: rotateY(180deg); }
+        
+        .card-front, .card-back {
+            position: relative; width: 100%; backface-visibility: hidden; border-radius: 20px;
+            background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border); box-shadow: var(--shadow-soft); overflow: hidden;
+        }
+        .card-back {
+            position: absolute; top: 0; left: 0; height: 100%; transform: rotateY(180deg);
+            display: flex; flex-direction: column; background: rgba(255,255,255,0.95);
+        }
 
-        .card-info { padding-top: 14px; text-align: center; }
+        .card-front img { width: 100%; display: block; object-fit: cover; border-radius: 18px 18px 0 0; background: #E8EDE9; opacity: 0; transition: opacity 0.5s; }
+        .card-front img.loaded { opacity: 1; background: transparent; }
+        
+        .card-info { padding: 16px; position: relative; }
         .card-title { margin: 0 0 4px; font-size: 15px; font-weight: bold; }
         .card-author { margin: 0; font-size: 12px; color: var(--text-muted); }
-
-        /* =========================================
-           5. 优雅弹窗与提示框 (全硬件加速)
-           ========================================= */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(25, 30, 27, 0.4); 
-            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-            z-index: 1000; display: flex; justify-content: center; align-items: center;
-            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
-            will-change: opacity;
-        }
-        .modal-overlay.show { opacity: 1; visibility: visible; }
-        .modal-box {
-            background: rgba(255, 255, 255, 0.98); padding: 36px 28px; border-radius: 24px; 
-            width: 88%; max-width: 360px; text-align: center;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15); 
-            transform: translate3d(0, 20px, 0) scale(0.95); 
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            will-change: transform;
-        }
-        .modal-overlay.show .modal-box { transform: translate3d(0, 0, 0) scale(1); }
-        .modal-box h3 { margin: 0 0 20px 0; color: var(--accent-color); font-size: 18px; letter-spacing: 2px;}
         
-        .input-box {
-            width: 100%; padding: 14px; margin-bottom: 16px; 
-            border: 1px solid #E8EDE9; border-radius: 14px; background: #F7F9F8; 
-            color: var(--text-dark); font-family: inherit; font-size: 14px; text-align: center; 
-            outline: none; transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            appearance: none; 
+        /* 灵动点赞徽章 */
+        .like-btn {
+            position: absolute; right: 16px; bottom: 16px; background: rgba(140, 161, 146, 0.1); border: none;
+            padding: 6px 12px; border-radius: 50px; display: flex; align-items: center; gap: 6px;
+            color: var(--accent-color); font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.3s ease;
         }
-        .input-box:focus { border-color: var(--accent-color); background: white; box-shadow: 0 0 0 3px rgba(140, 161, 146, 0.1); }
+        .like-btn:hover { background: rgba(140, 161, 146, 0.2); transform: scale(1.05); }
+        .like-btn svg { transition: transform 0.3s var(--cubic-bounce); }
+        .like-btn:active svg { transform: scale(1.3); }
 
-        .toast {
-            position: fixed; top: 30px; left: 50%; transform: translate3d(-50%, -20px, 0);
-            background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border); border-radius: 30px;
-            color: var(--text-dark); padding: 10px 20px; font-size: 14px; letter-spacing: 1px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px;
-            opacity: 0; visibility: hidden; z-index: 9999;
-            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.3s ease;
-            will-change: transform, opacity;
-        }
-        .toast.show { opacity: 1; visibility: visible; transform: translate3d(-50%, 0, 0); }
-
-        /* 音乐控件 */
-        .music-player { 
-            position: fixed; bottom: 30px; right: 30px; z-index: 999; width: 48px; height: 48px; 
-            border-radius: 50%; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.1); 
-            animation: spin 5s linear infinite; 
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease; 
-            will-change: transform, filter;
-        }
-        .music-player.paused { animation-play-state: paused; filter: grayscale(50%) opacity(0.8); }
-        .music-player:hover { transform: scale(1.05); }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        /* 背面评论区 (防溢出滚动) */
+        .back-header { padding: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; color: var(--accent-color); }
+        .close-flip { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; }
+        .comments-list { flex: 1; padding: 15px; overflow-y: auto; font-size: 13px; scrollbar-width: none; }
+        .comments-list::-webkit-scrollbar { display: none; }
+        .comment-item { margin-bottom: 12px; line-height: 1.5; animation: fadeInUp 0.4s ease backwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+        
+        .comment-input-box { padding: 12px; border-top: 1px solid rgba(0,0,0,0.05); display: flex; gap: 8px; }
+        .comment-input-box input { flex: 1; padding: 8px 12px; border: 1px solid #E8EDE9; border-radius: 12px; font-size: 12px; outline: none; background: #F7F9F8; transition: border-color 0.3s; }
+        .comment-input-box input:focus { border-color: var(--accent-color); }
+        .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 10px; padding: 0 15px; font-size: 12px; cursor: pointer; }
 
         /* =========================================
-           6. 移动端终极排版优化
+           5. 响应式布局优化 (全面屏适配)
            ========================================= */
-        @media (max-width: 900px) { .gallery { column-count: 2; padding: 20px 30px; } }
+        @media (max-width: 900px) { .view-gallery { column-count: 2; } }
         @media (max-width: 600px) { 
-            .gallery { column-count: 1; padding: 10px 16px 40px; column-gap: 16px; } 
-            .card { margin-bottom: 16px; border-radius: 16px; padding: 10px 10px 16px; }
-            header { padding: 40px 16px 16px; } h1 { font-size: 28px; letter-spacing: 4px; }
-            .poetry-card { padding: 24px 20px; border-radius: 20px; margin: 20px auto; }
-            .modal-box { padding: 28px 20px; width: 92%; }
-            .input-box { padding: 12px; }
-            .btn { padding: 12px 28px; font-size: 14px; }
-            .music-player { bottom: 20px; right: 20px; width: 44px; height: 44px; }
-            .toast { width: auto; max-width: 90%; white-space: nowrap; }
+            #main-container { padding: 10px 16px 40px; }
+            .view-gallery { column-count: 1; }
+            .view-timeline::before { left: 20px; }
+            .tl-row { flex-direction: column; }
+            .tl-left, .tl-right { width: 100%; padding: 10px 0 10px 45px; }
+            .tl-row::after { left: 20px; top: 35px; width: 10px; height: 10px; }
+            .time-badge { align-self: flex-start; margin-left: 20px; }
         }
+
+        /* 模态框与极简提示 */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(6px); z-index: 1000; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; will-change: opacity;}
+        .modal.show { display: flex; opacity: 1; }
+        .modal-box { background: rgba(255,255,255,0.98); padding: 35px 25px; border-radius: 24px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.15); transform: scale(0.95); transition: transform 0.4s var(--cubic-bounce); will-change: transform;}
+        .modal.show .modal-box { transform: scale(1); }
+        .input-box { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #E8EDE9; border-radius: 14px; background: #F7F9F8; text-align: center; outline: none; appearance: none; transition: 0.3s; }
+        .input-box:focus { border-color: var(--accent-color); }
+        .toast { position: fixed; top: 30px; left: 50%; transform: translate3d(-50%, -20px, 0); background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 30px; padding: 10px 24px; font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); opacity: 0; pointer-events: none; transition: 0.4s var(--cubic-bounce); z-index: 9999; will-change: transform, opacity;}
+        .toast.show { opacity: 1; transform: translate3d(-50%, 0, 0); }
     </style>
 </head>
 <body>
@@ -195,190 +169,277 @@
     <header>
         <h1>拾光集</h1>
         <div class="poetry-card">
-            <div class="poetry-en">"We do not remember days, we remember moments."</div>
-            <div class="poetry-zh">岁月无声，唯有拾光。</div>
+            <div style="font-style: italic; color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">"We do not remember days, we remember moments."</div>
+            <div style="font-size: 16px; letter-spacing: 2px;">岁月无声，唯有拾光。</div>
         </div>
-        <button class="btn" onclick="toggleModal(true)">珍藏此刻回忆</button>
+        <div class="controls">
+            <button class="btn btn-outline" id="modeBtn" onclick="toggleMode()">切换至岁月模式 🕰️</button>
+            <button class="btn" onclick="toggleModal(true)">珍藏此刻 ✨</button>
+        </div>
     </header>
 
-    <main class="gallery" id="galleryContainer"></main>
+    <main id="main-container" class="view-gallery"></main>
 
-    <div id="uploadModal" class="modal-overlay">
+    <div id="uploadModal" class="modal">
         <div class="modal-box">
-            <h3>时光信笺</h3>
-            <input type="file" id="photoFile" accept="image/*" class="input-box" style="padding: 10px; border-style: dashed; cursor: pointer;">
+            <h3 style="margin: 0 0 20px; color: var(--accent-color);">时光信笺</h3>
+            <input type="file" id="photoFile" accept="image/*" class="input-box" style="border-style: dashed;">
             <input type="text" id="photoTitle" placeholder="给这段回忆起个名字..." class="input-box" autocomplete="off">
             <input type="text" id="uploaderName" placeholder="你的署名" class="input-box" autocomplete="off">
-            <div style="display: flex; justify-content: space-between; margin-top: 16px;">
-                <button class="btn" style="background: transparent; color: var(--text-muted); box-shadow: none;" onclick="toggleModal(false)">收起</button>
-                <button class="btn" id="submitBtn" onclick="submitPhoto(event)">封存</button>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-outline" style="flex:1" onclick="toggleModal(false)">收起</button>
+                <button class="btn" id="submitBtn" style="flex:1" onclick="submitPhoto(event)">封存</button>
             </div>
         </div>
     </div>
 
-    <audio id="bgMusic" loop preload="auto"><source src="xvni.mp3" type="audio/mpeg"></audio>
-    <div id="musicBtn" class="music-player paused" onclick="toggleMusic()">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#1a1a1a"/><circle cx="50" cy="50" r="18" fill="#8CA192"/><circle cx="50" cy="50" r="3.5" fill="#FAFCFA"/></svg>
-    </div>
-
     <script>
         // ==========================================
-        // 🚀 核心配置区
+        // 🚀 核心架构与 SDK 初始化
         // ==========================================
         const COS_CONFIG = {
             SecretId: 'AKIDcSIyb6LHfzGL' + 'BoEPM4XmocFdu8D4iFcm',
             SecretKey: 'xgIuRvJfsrbIqhKt' + 'QwKi4II3OeolU0JN',
-            Bucket: 'thysummer-1420216801',
-            Region: 'ap-beijing'
+            Bucket: 'thysummer-1420216801', Region: 'ap-beijing'
         };
-
         const SUPABASE_CONFIG = {
             Url: 'https://vwuulslskezoerbtnjte.supabase.co',
             Key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dXVsc2xza2V6b2VyYnRuanRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjQ1NTQsImV4cCI6MjA5MTMwMDU1NH0.bEBeflj63BjeOD_mv20bD-gIXY8O6NunBOkjp6JtokI'
         };
 
-        // 🌟 修复冲突：使用 appSupabase 代替 supabase
         const cos = new COS({ SecretId: COS_CONFIG.SecretId, SecretKey: COS_CONFIG.SecretKey });
-        let appSupabase = null;
-        try { 
-            if (window.supabase) {
-                appSupabase = window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key); 
-            }
-        } catch(e) { console.error("数据库初始化失败", e); }
+        const appSupabase = window.supabase ? window.supabase.createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key) : null;
+
+        // 全局状态管理
+        const State = {
+            photos: [],
+            currentMode: 'gallery' // 'gallery' | 'timeline'
+        };
 
         // ==========================================
-        // ✨ 性能优化：动态光尘渲染
+        // ✨ 离屏渲染与数据加载
         // ==========================================
-        const moteCount = window.innerWidth <= 600 ? 10 : 20; 
-        const frag = document.createDocumentFragment();
-        for (let i = 0; i < moteCount; i++) {
-            let mote = document.createElement('i'); 
-            mote.className = 'mote';
-            let size = Math.random() * 5 + 3; 
-            mote.style.width = size + 'px'; 
-            mote.style.height = size + 'px';
-            mote.style.left = Math.random() * 100 + 'vw'; 
-            mote.style.animationDuration = (Math.random() * 8 + 6) + 's';
-            mote.style.animationDelay = (Math.random() * 5) + 's'; 
-            frag.appendChild(mote);
+        async function loadData() {
+            const container = document.getElementById('main-container');
+            if (!appSupabase) return showToast("云端数据库未连接", "error");
+            
+            const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
+            if (error) return showToast("打捞记忆碎片失败", "error");
+            
+            State.photos = data;
+            renderEngine();
         }
-        document.getElementById('bg-fx').appendChild(frag);
+
+        // 高阶渲染引擎 (分离视图逻辑)
+        function renderEngine() {
+            const container = document.getElementById('main-container');
+            container.style.opacity = 0; // 切换动画
+            
+            setTimeout(() => {
+                container.className = State.currentMode === 'gallery' ? 'view-gallery' : 'view-timeline';
+                
+                if (State.currentMode === 'gallery') {
+                    container.innerHTML = State.photos.map(p => createCardHTML(p, 'card-wrapper')).join('');
+                } else {
+                    // 算法优化：使用 reduce 高效分组聚合
+                    const grouped = State.photos.reduce((acc, p) => {
+                        const d = new Date(p.created_at);
+                        const key = `${d.getFullYear()}年 ${String(d.getMonth()+1).padStart(2,'0')}月`;
+                        (acc[key] || (acc[key] = [])).push(p); return acc;
+                    }, {});
+                    
+                    let html = '';
+                    for (const [month, list] of Object.entries(grouped)) {
+                        html += `<div class="time-badge">${month}</div>`;
+                        for (let i = 0; i < list.length; i += 2) {
+                            html += `<div class="tl-row">
+                                <div class="tl-left">${createCardHTML(list[i], 'card-wrapper')}</div>
+                                ${list[i+1] ? `<div class="tl-right">${createCardHTML(list[i+1], 'card-wrapper')}</div>` : ''}
+                            </div>`;
+                        }
+                    }
+                    container.innerHTML = html;
+                }
+                container.style.opacity = 1;
+            }, 300);
+        }
+
+        // 统一卡片生成工厂 (3D 结构)
+        function createCardHTML(p, wrapperClass = '') {
+            return `
+            <div class="${wrapperClass}">
+                <div class="card-inner" data-id="${p.id}">
+                    <div class="card-front">
+                        <img src="${p.image_url}" loading="lazy" onload="this.classList.add('loaded')">
+                        <div class="card-info">
+                            <p class="card-title">${p.title}</p>
+                            <p class="card-author">@${p.author}</p>
+                            <button class="like-btn" data-action="like" data-id="${p.id}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                <span>${p.likes || 0}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-back">
+                        <div class="back-header">拾光回音 <button class="close-flip" data-action="close">返回</button></div>
+                        <div class="comments-list" id="comments-${p.id}">
+                            <div style="text-align:center; padding:20px; color:var(--text-muted)">轻敲信笺，倾听回音...</div>
+                        </div>
+                        <div class="comment-input-box">
+                            <input type="text" id="in-${p.id}" placeholder="写下你的共鸣..." autocomplete="off">
+                            <button data-action="send" data-id="${p.id}">留印</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
 
         // ==========================================
-        // 🎮 交互控制方法
+        // 🎮 全局事件委托机制 (性能极致优化)
         // ==========================================
-        let toastTimeout;
-        window.showToast = (msg, type = 'info') => {
-            const t = document.getElementById('toast'); 
-            t.innerHTML = `${type === 'error' ? '🍂' : '✨'} ${msg}`;
-            t.classList.add('show'); 
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => t.classList.remove('show'), 2500);
+        document.getElementById('main-container').addEventListener('click', async (e) => {
+            const likeBtn = e.target.closest('[data-action="like"]');
+            const closeBtn = e.target.closest('[data-action="close"]');
+            const sendBtn = e.target.closest('[data-action="send"]');
+            const cardInner = e.target.closest('.card-inner');
+
+            // 1. 点赞共鸣系统
+            if (likeBtn) {
+                e.stopPropagation(); // 阻止触发卡片翻转
+                const id = likeBtn.dataset.id;
+                const span = likeBtn.querySelector('span');
+                const svg = likeBtn.querySelector('svg');
+                let currentLikes = parseInt(span.innerText);
+                
+                // Optimistic UI Update (无感更新)
+                span.innerText = currentLikes + 1;
+                svg.style.fill = 'var(--accent-color)';
+                appSupabase.from('photos').update({ likes: currentLikes + 1 }).eq('id', id).then();
+                return;
+            }
+
+            // 2. 评论发送逻辑
+            if (sendBtn) {
+                e.stopPropagation();
+                const id = sendBtn.dataset.id;
+                const input = document.getElementById(`in-${id}`);
+                const content = input.value.trim();
+                const nickname = localStorage.getItem('nickname') || "匿名旅人";
+                if (!content) return;
+                
+                input.value = '投递中...'; input.disabled = true;
+                const { error } = await appSupabase.from('comments').insert([{ photo_id: id, nickname, content }]);
+                input.value = ''; input.disabled = false;
+                if (!error) loadComments(id);
+                return;
+            }
+
+            // 3. 翻转关闭逻辑
+            if (closeBtn) {
+                e.stopPropagation();
+                cardInner.classList.remove('is-flipped');
+                return;
+            }
+
+            // 4. 触发 3D 翻转并加载数据
+            if (cardInner && !cardInner.classList.contains('is-flipped')) {
+                cardInner.classList.add('is-flipped');
+                loadComments(cardInner.dataset.id);
+            }
+        });
+
+        async function loadComments(id) {
+            const list = document.getElementById(`comments-${id}`);
+            const { data, error } = await appSupabase.from('comments').select('*').eq('photo_id', id).order('created_at', { ascending: true });
+            if (error) return;
+            list.innerHTML = data.length ? data.map(c => `
+                <div class="comment-item">
+                    <span style="color:var(--accent-color); font-weight:bold;">${c.nickname}</span>：<span style="color:#555">${c.content}</span>
+                </div>`).join('') : '<div style="text-align:center; padding:20px; color:var(--text-muted);">信笺背面空空如也，留下第一道印记吧。</div>';
+            list.scrollTop = list.scrollHeight; // 自动滚动到底部
+        }
+
+        // ==========================================
+        // 🚀 核心算法升级：OffscreenCanvas 异步极速压缩
+        // ==========================================
+        async function compressImage(file) {
+            const bitmap = await createImageBitmap(file);
+            let w = bitmap.width, h = bitmap.height;
+            if (w > 1200) { h = Math.round(h * (1200 / w)); w = 1200; }
+
+            // 智能降级：支持 OffscreenCanvas 的现代浏览器走独立线程处理，不阻塞 UI
+            if (window.OffscreenCanvas) {
+                const oc = new OffscreenCanvas(w, h);
+                const ctx = oc.getContext('2d');
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(bitmap, 0, 0, w, h);
+                bitmap.close();
+                return oc.convertToBlob({ type: 'image/webp', quality: 0.82 });
+            } else {
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(bitmap, 0, 0, w, h);
+                bitmap.close();
+                return new Promise(res => canvas.toBlob(res, 'image/webp', 0.82));
+            }
+        }
+
+        window.submitPhoto = async (e) => {
+            const file = document.getElementById('photoFile').files[0];
+            const title = document.getElementById('photoTitle').value.trim();
+            const name = document.getElementById('uploaderName').value.trim();
+            if (!file || !title || !name) return showToast("墨水似乎不够，请填写完整", "error");
+            
+            localStorage.setItem('nickname', name);
+            const btn = e.target; btn.disabled = true; btn.innerText = "压缩图谱...";
+            
+            try {
+                const finalFile = await compressImage(file);
+                btn.innerText = "跨越星海...";
+                
+                const path = `photos/${Date.now()}.webp`;
+                const cosRes = await new Promise((res, rej) => cos.putObject({ Bucket: COS_CONFIG.Bucket, Region: COS_CONFIG.Region, Key: path, Body: finalFile }, (err, data) => err ? rej(err) : res(data)));
+                
+                btn.innerText = "落笔生花...";
+                await appSupabase.from('photos').insert([{ title, author: name, image_url: `https://${cosRes.Location}` }]);
+                
+                showToast("信笺已封存", "success");
+                toggleModal(false); loadData();
+            } catch (err) { showToast("星空拥堵，请重试", "error"); }
+            finally { btn.disabled = false; btn.innerText = "封存"; }
+        };
+
+        // UI 辅助方法
+        window.toggleMode = () => {
+            State.currentMode = State.currentMode === 'gallery' ? 'timeline' : 'gallery';
+            document.getElementById('modeBtn').innerText = State.currentMode === 'gallery' ? '切换至岁月模式 🕰️' : '切换至画廊模式 🖼️';
+            renderEngine();
         };
 
         window.toggleModal = (show) => {
-            document.getElementById('uploadModal').classList.toggle('show', show);
-            if(show) {
-                const savedName = localStorage.getItem('nickname');
-                if (savedName) document.getElementById('uploaderName').value = savedName;
-            }
+            const m = document.getElementById('uploadModal');
+            if (show) { m.classList.add('show'); document.getElementById('uploaderName').value = localStorage.getItem('nickname') || ''; }
+            else { m.classList.remove('show'); document.getElementById('photoFile').value=''; document.getElementById('photoTitle').value=''; }
         };
 
-        window.toggleMusic = () => {
-            const m = document.getElementById('bgMusic'), btn = document.getElementById('musicBtn');
-            m.paused ? m.play().then(() => btn.classList.remove('paused')).catch(() => showToast("播放需先触碰页面", "info")) 
-                     : (m.pause(), btn.classList.add('paused'));
+        let tTimer; window.showToast = (msg, type='info') => {
+            const t = document.getElementById('toast'); t.innerHTML = `${type==='error'?'🍂':'✨'} ${msg}`;
+            t.classList.add('show'); clearTimeout(tTimer); tTimer = setTimeout(()=>t.classList.remove('show'), 2500);
         };
 
-        // ==========================================
-        // 🚀 核心逻辑引擎：加载与极速压缩
-        // ==========================================
-        async function loadPhotos() {
-            const container = document.getElementById('galleryContainer');
-            if (!appSupabase) return container.innerHTML = '<div style="text-align:center;color:#d81b60;">数据库未连接</div>';
-            
-            container.innerHTML = '<div style="text-align:center;width:100%;color:var(--text-muted);font-size:14px;">正在打捞岁月碎片...</div>';
-            
-            // 🌟 使用 appSupabase 发起请求
-            const { data, error } = await appSupabase.from('photos').select('*').order('created_at', { ascending: false });
-            if (error) return container.innerHTML = '<div style="text-align:center;color:#d81b60;">读取信件失败</div>';
-            
-            container.innerHTML = data.length ? data.map((p, i) => `
-                <div class="card" style="animation-delay:${(i % 10) * 0.05}s">
-                    <img src="${p.image_url}" alt="${p.title}" loading="lazy" onload="this.classList.add('loaded')">
-                    <div class="card-info"><p class="card-title">${p.title}</p><p class="card-author">—— ${p.author}</p></div>
-                </div>`).join('') : '<div style="text-align:center;width:100%;color:var(--text-muted);">信箱空空的，留点什么吧。</div>';
+        // 初始化背景动效与数据
+        const frag = document.createDocumentFragment();
+        for(let i=0; i<(window.innerWidth<=600?10:20); i++){
+            const m = document.createElement('i'); m.className='mote';
+            m.style.width=m.style.height=(Math.random()*4+2)+'px';
+            m.style.left=Math.random()*100+'vw'; m.style.animationDuration=(Math.random()*8+6)+'s';
+            m.style.animationDelay=Math.random()*5+'s'; frag.appendChild(m);
         }
+        document.getElementById('bg-fx').appendChild(frag);
         
-        loadPhotos(); 
-
-        async function compress(file) {
-            return new Promise(async (resolve) => {
-                const bitmap = window.createImageBitmap ? await createImageBitmap(file) 
-                             : await new Promise(r => { const i=new Image(); i.src=URL.createObjectURL(file); i.onload=()=>{ URL.revokeObjectURL(i.src); r(i); }});
-                
-                let w = bitmap.width, h = bitmap.height;
-                if (w > 1200) { h = Math.round(h * (1200 / w)); w = 1200; }
-                
-                const canvas = document.createElement('canvas'); 
-                canvas.width = w; canvas.height = h;
-                const ctx = canvas.getContext('2d'); 
-                ctx.imageSmoothingQuality = 'high'; 
-                ctx.drawImage(bitmap, 0, 0, w, h);
-                
-                canvas.toBlob(blob => resolve(new File([blob], `img_${Date.now()}.webp`, {type:'image/webp'})), 'image/webp', 0.82);
-            });
-        }
-
-        // ==========================================
-        // 🚀 核心逻辑引擎：投递入库
-        // ==========================================
-        window.submitPhoto = async (e) => {
-            if (!appSupabase) return showToast("信箱离线，请刷新重试", "error");
-            
-            const fileInput = document.getElementById('photoFile').files[0]; 
-            const title = document.getElementById('photoTitle').value.trim();
-            const name = document.getElementById('uploaderName').value.trim();
-            
-            if (!fileInput || !title || !name) return showToast("信息未填写完整", "error");
-            
-            localStorage.setItem('nickname', name);
-            const btn = e.target; 
-            btn.disabled = true; btn.innerText = "正在打磨...";
-            
-            try {
-                // 1. 本地极速压缩
-                const finalFile = await compress(fileInput);
-                const path = `photos/${Date.now()}-${finalFile.name}`;
-                
-                // 2. 传入腾讯云 COS
-                btn.innerText = "正在跨越星海...";
-                const cosRes = await new Promise((res, rej) => {
-                    cos.putObject({ Bucket: COS_CONFIG.Bucket, Region: COS_CONFIG.Region, Key: path, Body: finalFile }, 
-                    (err, data) => err ? rej(err) : res(data));
-                });
-                
-                // 3. 拿到 URL 存入 Supabase
-                btn.innerText = "正在落笔生花...";
-                const url = `https://${cosRes.Location}`;
-                
-                // 🌟 使用 appSupabase 发起写入请求
-                const { error } = await appSupabase.from('photos').insert([{ title, author: name, image_url: url }]);
-                if (error) throw error;
-                
-                // 4. 收尾清理与刷新
-                showToast("回忆已封存", "success"); 
-                toggleModal(false); 
-                document.getElementById('photoFile').value = ''; 
-                document.getElementById('photoTitle').value = '';
-                loadPhotos();
-           } catch (err) { 
-                showToast("星空通道拥堵，请稍候重试", "error"); 
-                console.error(err);
-            } finally {
-                btn.disabled = false; btn.innerText = "封存"; 
-            }
-        };
+        loadData();
     </script>
 </body>
 </html>
