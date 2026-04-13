@@ -5,7 +5,7 @@
  */
 import BackgroundFx from '../components/BackgroundFx.vue';
 import Toast from '../components/Toast.vue';
-import MusicPlayer from '../components/MusicPlayer.vue';
+// ✨ 修复 1：已经彻底删除了 import MusicPlayer 的引入
 import Modals from '../components/Modals.vue';
 
 const { title = "拾光集 - 岁月留影" } = Astro.props;
@@ -19,6 +19,7 @@ const { title = "拾光集 - 岁月留影" } = Astro.props;
     <title>{title}</title>
     
     <link rel="preconnect" href="https://fastly.jsdelivr.net">
+    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/ThySummer14/thysummer.@main/public/favicon.ico" />
 
     <script is:inline>
         if ('serviceWorker' in navigator) {
@@ -88,6 +89,5 @@ const { title = "拾光集 - 岁月留影" } = Astro.props;
 
     <Toast client:load />
     <Modals client:load />
-    <MusicPlayer client:load />
-</body>
+    </body>
 </html>
