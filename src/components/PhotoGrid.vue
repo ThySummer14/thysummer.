@@ -5,16 +5,17 @@ import { appState, filteredPhotos, groupedTimelinePhotos } from '../store/state.
 import { SUPABASE_CONFIG, vibrate } from '../utils/core.js';
 import PhotoCard from './PhotoCard.vue';
 
-// --- 1. Supabase 单例化 ---
-let supabaseInstance = null;
+// ✨ 1. Supabase 终极单例化：利用 window 全局挂载，彻底消灭 Multiple Instances 警告
 const getSupabase = () => {
-  if (!supabaseInstance) supabaseInstance = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  return supabaseInstance;
+  if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  if (!window.__supabaseClient) {
+    window.__supabaseClient = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  }
+  return window.__supabaseClient;
 };
 
-// --- 2. 路径与音乐引擎 (✨ 核心修复：Vite 动态环境解析) ---
-// ✨ 替换为这行（这里我以 GitHub Raw 链接为例，如果你传了腾讯云，就换成腾讯云的链接）
-const musicUrl = "https://raw.githubusercontent.com/ThySummer14/thysummer./main/public/xvni.mp3";
+// ✨ 2. 音乐路径终极方案：利用环境判断，避开打包时的 file:/// 错误
+const musicUrl = import.meta.env.PROD ? '/thysummer./xvni.mp3' : '/xvni.mp3';
 
 const toggleMusic = () => {
   vibrate(10);
@@ -28,7 +29,6 @@ const toggleMusic = () => {
       btn.classList.remove('error-state');
     }).catch((err) => {
       console.warn('🎶 回音无法唤醒，可能受到浏览器限制或网络波动', err);
-      // ✨ 修复：不再使用 alert 弹窗打扰用户，而是让按钮显示故障红光
       btn.classList.remove('playing');
       btn.classList.add('error-state');
     });
@@ -109,7 +109,7 @@ onMounted(async () => {
   updateColCount();
   window.addEventListener('resize', updateColCount);
   try {
-    const supabase = getSupabase(); // ✨ 使用单例
+    const supabase = getSupabase(); 
     const { data, error } = await supabase.from('photos').select('*').order('created_at', { ascending: false });
     if (!error && data) appState.photos = data;
   } catch (err) { console.error("Supabase 数据加载失败:", err); }
@@ -168,18 +168,12 @@ onBeforeUnmount(() => {
 <style scoped>
 #main-container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 20px 40px 100px; }
 
-/* 开启硬件加速微光背景基础 */
-.hardware-accelerated {
-  transform: translateZ(0);
-  will-change: transform;
-}
+.hardware-accelerated { transform: translateZ(0); will-change: transform; }
 
-/* 瀑布流 */
 .true-waterfall { display: flex; align-items: flex-start; gap: 30px; }
 .waterfall-col { flex: 1; display: flex; flex-direction: column; }
 .col-inner { display: flex; flex-direction: column; gap: 35px; }
 
-/* 音乐磁盘 */
 .music-disk { 
   position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 52px; height: 52px; 
   border-radius: 50%; cursor: pointer; background: conic-gradient(#111, #333, #111, #333, #111);
@@ -187,18 +181,15 @@ onBeforeUnmount(() => {
   transition: border-color 0.3s;
 }
 .music-disk.playing { animation-play-state: running; box-shadow: 0 0 20px rgba(140, 161, 146, 0.4); }
-
-/* ✨ 新增音乐播放异常时的容错样式指示器 */
 .music-disk.error-state { border-color: #e74c3c; animation: pulseError 1s infinite alternate; animation-play-state: running; }
+
 @keyframes diskSpin { to { transform: rotate(360deg); } }
 @keyframes pulseError { from { box-shadow: 0 0 5px rgba(231,76,60,0.3); } to { box-shadow: 0 0 20px rgba(231,76,60,0.8); } }
 
-/* 状态样式 */
 .empty-state, .loading-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
 .pulse-loader { width: 16px; height: 16px; border-radius: 50%; background: var(--accent-color); animation: pulseBeat 1s infinite alternate; }
 @keyframes pulseBeat { from { transform: scale(0.8); opacity: 0.5; } to { transform: scale(1.2); opacity: 1; } }
 
-/* 时光轴等其他样式建议沿用你之前的 CSS */
 .view-timeline { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; position: relative; }
 .view-timeline::before { content: ''; position: absolute; width: 2px; background: linear-gradient(to bottom, transparent, var(--accent-color), transparent); opacity: 0.3; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 0; }
 .time-badge { align-self: center; background: var(--glass-bg, rgba(255,255,255,0.9)); padding: 8px 28px; border-radius: 50px; font-size: 14px; font-weight: 600; margin: 40px auto 20px; z-index: 2; border: 1px solid var(--accent-color); backdrop-filter: blur(10px); width: max-content; }
