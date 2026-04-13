@@ -13,7 +13,8 @@ const getSupabase = () => {
 };
 
 // --- 2. 路径与音乐引擎 (✨ 核心修复：Vite 动态环境解析) ---
-const musicUrl = new URL('/xvni.mp3', import.meta.url).href;
+// ✨ 替换为这行（这里我以 GitHub Raw 链接为例，如果你传了腾讯云，就换成腾讯云的链接）
+const musicUrl = "https://raw.githubusercontent.com/ThySummer14/thysummer./main/public/xvni.mp3";
 
 const toggleMusic = () => {
   vibrate(10);
