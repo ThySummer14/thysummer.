@@ -9,10 +9,6 @@ permissions:
   pages: write
   id-token: write
 
-# 🚀 强制开启全局 Node 24 模式，消灭所有过期警告
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,19 +16,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ✨ 关键步骤：在安装 pnpm 之前，先强制把环境切换到 Node 22
-      - name: Setup Node.js 22
+      # 1. 强制安装 Node.js 22 (这是解决问题的关键！)
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
 
-      - name: Setup pnpm
+      # 2. 安装 pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
 
-      - name: Install, build, and upload your site
-        uses: withastro/action@v3
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: pnpm install
+
+      # 4. 执行构建 (这里会进行真正的 astro build)
+      - name: Build Astro
+        run: pnpm run build
+
+      # 5. 上传构建后的产物
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
 
   deploy:
     needs: build
