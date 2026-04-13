@@ -5,15 +5,15 @@ import { appState, filteredPhotos, groupedTimelinePhotos } from '../store/state.
 import { SUPABASE_CONFIG, vibrate } from '../utils/core.js';
 import PhotoCard from './PhotoCard.vue';
 
-// --- 1. 初始化 Supabase (移出 setup 外部或顶部以防止重复实例化警告) ---
-const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-
-// --- 2. 路径与音乐引擎 (纠正末尾斜杠粘连问题) ---
-const getCleanBase = () => {
-  const base = import.meta.env.BASE_URL;
-  return base.endsWith('/') ? base : `${base}/`;
+// --- 1. Supabase 单例化 ---
+let supabaseInstance = null;
+const getSupabase = () => {
+  if (!supabaseInstance) supabaseInstance = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  return supabaseInstance;
 };
-const musicUrl = `${getCleanBase()}xvni.mp3`;
+
+// --- 2. 路径与音乐引擎 (✨ 核心修复：Vite 动态环境解析) ---
+const musicUrl = new URL('/xvni.mp3', import.meta.url).href;
 
 const toggleMusic = () => {
   vibrate(10);
@@ -24,8 +24,12 @@ const toggleMusic = () => {
   if (m.paused) {
     m.play().then(() => {
       btn.classList.add('playing');
-    }).catch(() => {
-      alert('岁月静好，需轻触页面以唤醒回音。');
+      btn.classList.remove('error-state');
+    }).catch((err) => {
+      console.warn('🎶 回音无法唤醒，可能受到浏览器限制或网络波动', err);
+      // ✨ 修复：不再使用 alert 弹窗打扰用户，而是让按钮显示故障红光
+      btn.classList.remove('playing');
+      btn.classList.add('error-state');
     });
   } else {
     m.pause();
@@ -104,6 +108,7 @@ onMounted(async () => {
   updateColCount();
   window.addEventListener('resize', updateColCount);
   try {
+    const supabase = getSupabase(); // ✨ 使用单例
     const { data, error } = await supabase.from('photos').select('*').order('created_at', { ascending: false });
     if (!error && data) appState.photos = data;
   } catch (err) { console.error("Supabase 数据加载失败:", err); }
@@ -116,17 +121,6 @@ onBeforeUnmount(() => {
 
 <template>
   <main id="main-container">
-    <div class="search-section">
-      <input 
-        type="text" 
-        id="memory-search"
-        name="memory-search"
-        v-model="appState.searchQuery" 
-        placeholder="在岁月中检索..." 
-        autocomplete="off"
-      />
-    </div>
-
     <audio id="bgMusic" loop preload="auto">
       <source :src="musicUrl" type="audio/mpeg">
     </audio>
@@ -141,7 +135,7 @@ onBeforeUnmount(() => {
       🍂 这里的记忆还未被拾起...
     </div>
 
-    <div v-else-if="appState.currentMode === 'gallery'" class="true-waterfall">
+    <div v-else-if="appState.currentMode === 'gallery'" class="true-waterfall hardware-accelerated">
       <div v-for="(col, cIndex) in waterfallColumns" :key="cIndex" class="waterfall-col">
         <div class="col-inner">
           <PhotoCard 
@@ -154,7 +148,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-else class="view-timeline">
+    <div v-else class="view-timeline hardware-accelerated">
       <div v-for="(list, month) in groupedTimelinePhotos" :key="month">
         <div class="time-badge" v-if="getPairs(list).length > 0">{{ month }}</div>
         <div class="tl-row" v-for="(pair, idx) in getPairs(list)" :key="idx">
@@ -172,24 +166,42 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #main-container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 20px 40px 100px; }
-.search-section { margin-bottom: 40px; text-align: center; }
-.search-section input {
-  background: var(--glass-bg); border: 1px solid var(--accent-color);
-  padding: 12px 25px; border-radius: 30px; width: 300px; color: var(--text-color);
-  outline: none; transition: all 0.3s ease; backdrop-filter: blur(5px);
-}
-.search-section input:focus { width: 350px; box-shadow: 0 0 15px rgba(140, 161, 146, 0.3); }
 
-/* 瀑布流 & 音乐磁盘 样式保持不变... */
+/* 开启硬件加速微光背景基础 */
+.hardware-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 瀑布流 */
 .true-waterfall { display: flex; align-items: flex-start; gap: 30px; }
 .waterfall-col { flex: 1; display: flex; flex-direction: column; }
 .col-inner { display: flex; flex-direction: column; gap: 35px; }
+
+/* 音乐磁盘 */
 .music-disk { 
   position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 52px; height: 52px; 
   border-radius: 50%; cursor: pointer; background: conic-gradient(#111, #333, #111, #333, #111);
   border: 3px solid rgba(255,255,255,0.9); animation: diskSpin 5s linear infinite; animation-play-state: paused;
+  transition: border-color 0.3s;
 }
-.music-disk.playing { animation-play-state: running; }
+.music-disk.playing { animation-play-state: running; box-shadow: 0 0 20px rgba(140, 161, 146, 0.4); }
+
+/* ✨ 新增音乐播放异常时的容错样式指示器 */
+.music-disk.error-state { border-color: #e74c3c; animation: pulseError 1s infinite alternate; animation-play-state: running; }
 @keyframes diskSpin { to { transform: rotate(360deg); } }
+@keyframes pulseError { from { box-shadow: 0 0 5px rgba(231,76,60,0.3); } to { box-shadow: 0 0 20px rgba(231,76,60,0.8); } }
+
+/* 状态样式 */
+.empty-state, .loading-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+.pulse-loader { width: 16px; height: 16px; border-radius: 50%; background: var(--accent-color); animation: pulseBeat 1s infinite alternate; }
+@keyframes pulseBeat { from { transform: scale(0.8); opacity: 0.5; } to { transform: scale(1.2); opacity: 1; } }
+
 /* 时光轴等其他样式建议沿用你之前的 CSS */
+.view-timeline { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; position: relative; }
+.view-timeline::before { content: ''; position: absolute; width: 2px; background: linear-gradient(to bottom, transparent, var(--accent-color), transparent); opacity: 0.3; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 0; }
+.time-badge { align-self: center; background: var(--glass-bg, rgba(255,255,255,0.9)); padding: 8px 28px; border-radius: 50px; font-size: 14px; font-weight: 600; margin: 40px auto 20px; z-index: 2; border: 1px solid var(--accent-color); backdrop-filter: blur(10px); width: max-content; }
+.tl-row { display: flex; width: 100%; position: relative; z-index: 1; }
+.tl-left, .tl-right { width: 50%; padding: 15px 40px; position: relative; }
+.tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 45px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 15px rgba(140,161,146,0.4); }
 </style>
