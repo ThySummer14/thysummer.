@@ -9,6 +9,13 @@ const props = defineProps({
   aspectRatio: { type: Number, required: true } 
 });
 
+// ✨ 修复：Supabase 单例化，彻底消灭 Multiple Instances 警告
+let supabaseInstance = null;
+const getSupabase = () => {
+  if (!supabaseInstance) supabaseInstance = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  return supabaseInstance;
+};
+
 const safeAspectRatio = computed(() => {
   const ratio = props.aspectRatio || 0.75;
   return Math.min(Math.max(ratio, 0.4), 2.5);
@@ -46,7 +53,7 @@ const handleGlobalClick = (e) => {
 };
 
 const fetchComments = async () => {
-  const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  const supabase = getSupabase(); // ✨ 使用单例
   const { data, error } = await supabase.from('comments').select('*').eq('photo_id', props.photo.id).order('created_at', { ascending: true });
   if (!error && data) { comments.value = data; isCommentsLoaded.value = true; }
 };
@@ -64,7 +71,7 @@ const handleSendComment = async (e) => {
   }
 
   isSubmittingComment.value = true;
-  const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  const supabase = getSupabase(); // ✨ 使用单例
   const { error } = await supabase.from('comments').insert([{ photo_id: props.photo.id, nickname, content: text }]);
   isSubmittingComment.value = false;
   if (!error) { commentText.value = ''; fetchComments(); } 
@@ -86,7 +93,7 @@ const handleLike = (e) => {
   if (isLiked.value) return; 
   vibrate(15); isLiked.value = true; localLikes.value++; showPulse.value = true;
   setTimeout(() => { showPulse.value = false; }, 800);
-  const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  const supabase = getSupabase(); // ✨ 使用单例
   supabase.from('photos').update({ likes: localLikes.value }).eq('id', props.photo.id).then();
 };
 
@@ -96,11 +103,10 @@ onMounted(() => {
     document.addEventListener('focusout', handleFocusOut);
     document.addEventListener('click', handleGlobalClick);
   }
-  // ✨ 原生级滑入监听重构
+  
   appearObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => { 
       if (entry.isIntersecting) { 
-        // 延迟一点点添加 class，让 DOM 先挂载，确保动画能执行
         requestAnimationFrame(() => {
             isVisible.value = true; 
         });
@@ -136,6 +142,7 @@ onBeforeUnmount(() => {
           <img 
             :src="photo.image_url" 
             loading="lazy" 
+            decoding="async"
             :class="{ 'loaded': imageLoaded }" 
             @load="imageLoaded = true" 
             @error="imageLoaded = true" 
@@ -177,7 +184,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* ✨ 完美复刻原生的底部滑入美学 */
+/* 原样保留你的样式设计 */
 .card-wrapper { 
   transform: translate3d(0, 40px, 0) rotate(0deg); 
   opacity: 0; 
