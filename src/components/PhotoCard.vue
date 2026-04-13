@@ -9,11 +9,13 @@ const props = defineProps({
   aspectRatio: { type: Number, required: true } 
 });
 
-// ✨ 修复：Supabase 单例化，彻底消灭 Multiple Instances 警告
-let supabaseInstance = null;
+// ✨ 修复：与外部同步，使用 window 挂载避免循环卡片产生上百个实例
 const getSupabase = () => {
-  if (!supabaseInstance) supabaseInstance = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  return supabaseInstance;
+  if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  if (!window.__supabaseClient) {
+    window.__supabaseClient = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
+  }
+  return window.__supabaseClient;
 };
 
 const safeAspectRatio = computed(() => {
@@ -53,7 +55,7 @@ const handleGlobalClick = (e) => {
 };
 
 const fetchComments = async () => {
-  const supabase = getSupabase(); // ✨ 使用单例
+  const supabase = getSupabase(); 
   const { data, error } = await supabase.from('comments').select('*').eq('photo_id', props.photo.id).order('created_at', { ascending: true });
   if (!error && data) { comments.value = data; isCommentsLoaded.value = true; }
 };
@@ -71,7 +73,7 @@ const handleSendComment = async (e) => {
   }
 
   isSubmittingComment.value = true;
-  const supabase = getSupabase(); // ✨ 使用单例
+  const supabase = getSupabase();
   const { error } = await supabase.from('comments').insert([{ photo_id: props.photo.id, nickname, content: text }]);
   isSubmittingComment.value = false;
   if (!error) { commentText.value = ''; fetchComments(); } 
@@ -93,7 +95,7 @@ const handleLike = (e) => {
   if (isLiked.value) return; 
   vibrate(15); isLiked.value = true; localLikes.value++; showPulse.value = true;
   setTimeout(() => { showPulse.value = false; }, 800);
-  const supabase = getSupabase(); // ✨ 使用单例
+  const supabase = getSupabase();
   supabase.from('photos').update({ likes: localLikes.value }).eq('id', props.photo.id).then();
 };
 
@@ -184,7 +186,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* 原样保留你的样式设计 */
 .card-wrapper { 
   transform: translate3d(0, 40px, 0) rotate(0deg); 
   opacity: 0; 
