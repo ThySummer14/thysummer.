@@ -2,7 +2,7 @@
  * @file src/utils/core.js
  * @description 2026 旗舰版 - 核心架构引擎与基础 API 封装
  */
-import COS from 'cos-js-sdk-v5'; // 确保你已经 npm install cos-js-sdk-v5
+import COS from 'cos-js-sdk-v5';
 
 // 🛡️ SSR 安全防线：动态判断是否在浏览器环境
 export const isClient = typeof window !== 'undefined';
@@ -52,12 +52,10 @@ export const Scheduler = {
 // ==========================================
 export const vibrate = (pattern = 20) => { 
     try { 
-        // 严格嗅探：必须在浏览器、拥有 navigator 且存在 vibrate 方法
         if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(pattern); 
         }
     } catch(e) {
-        // 静默处理，绝对不能让硬件 API 报错阻塞 UI 渲染
         console.warn("📳 触觉引擎调用受限，已安全降级", e);
     } 
 };
@@ -74,11 +72,15 @@ export const uploadToCOS = async (file) => {
                 SecretKey: COS_CONFIG.SecretKey 
             });
 
+            // ✨ 修复点：兼容离屏压缩后的 WebP 没有 name 属性的情况
+            const originalName = file.name || 'shiguang-memory.webp';
+            
             // 2. 净化文件名，防止特殊字符导致签名失败
-            const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
             const key = `photos/${Date.now()}-${safeFileName}`;
 
-            console.log("🚀 开始向星空投递...", key);
+            // ✨ 主题日志：上传开始
+            console.log("🕊️ 时光信笺正在跨越岁月...", key);
 
             // 3. 执行直传
             cos.putObject({
@@ -89,11 +91,11 @@ export const uploadToCOS = async (file) => {
             }, (err, data) => {
                 // 🔴 致命错误捕获层
                 if (err) {
-                    console.error("❌ [COS 上传链路断裂] 完整错误日志:", err);
+                    // ✨ 主题日志：上传失败
+                    console.error("❌ [信笺迷途] 投递未达，回音飘散:", err);
                     
-                    // 诊断探针：翻译常见黑盒错误
                     if (err.statusCode === 403) {
-                        console.error("🚨 诊断结论: 权限拒绝！请前往腾讯云控制台检查 CORS(跨域访问) 规则，确保允许你当前的网站域名进行 PUT/POST 操作，或者检查 SecretKey 权限。");
+                        console.error("🚨 诊断结论: 权限拒绝！请前往腾讯云控制台检查 CORS(跨域访问) 规则。");
                     } else if (err.error === "Network Error") {
                         console.error("🚨 诊断结论: 网络连接被重置，可能是跨域预检 (OPTIONS) 失败！");
                     }
@@ -103,7 +105,8 @@ export const uploadToCOS = async (file) => {
                 }
                 
                 // 🟢 成功解析层
-                console.log("✅ [星空投递成功] 数据:", data);
+                // ✨ 主题日志：上传成功
+                console.log("✅ [落笔生花] 信笺已安放于拾光集，数据:", data);
                 const publicUrl = `https://${COS_CONFIG.Bucket}.cos.${COS_CONFIG.Region}.myqcloud.com/${key}`;
                 resolve(publicUrl);
             });
