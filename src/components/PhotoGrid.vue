@@ -196,4 +196,14 @@ onBeforeUnmount(() => {
 .tl-row { display: flex; width: 100%; position: relative; z-index: 1; }
 .tl-left, .tl-right { width: 50%; padding: 15px 40px; position: relative; }
 .tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 45px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 15px rgba(140,161,146,0.4); }
+  /* ✨ 强制岁月模式在手机端显示为一列，拒绝拥挤 */
+@media (max-width: 768px) {
+  .tl-row { 
+    flex-direction: column !important; 
+  }
+  .tl-left, .tl-right { 
+    width: 100% !important; 
+    padding: 15px 20px 15px 40px !important; 
+  }
+}
 </style>
