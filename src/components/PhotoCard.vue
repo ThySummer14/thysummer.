@@ -9,7 +9,6 @@ const props = defineProps({
   aspectRatio: { type: Number, required: true } 
 });
 
-// ✨ 修复：与外部同步，使用 window 挂载避免循环卡片产生上百个实例
 const getSupabase = () => {
   if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
   if (!window.__supabaseClient) {
@@ -76,7 +75,11 @@ const handleSendComment = async (e) => {
   const supabase = getSupabase();
   const { error } = await supabase.from('comments').insert([{ photo_id: props.photo.id, nickname, content: text }]);
   isSubmittingComment.value = false;
-  if (!error) { commentText.value = ''; fetchComments(); } 
+  if (!error) { 
+    commentText.value = ''; 
+    fetchComments(); 
+    vibrate([10, 20]); // 成功发送后的轻微确认震动
+  } 
 };
 
 watch(() => appState.showIdentityModal, (newVal) => {
@@ -85,7 +88,7 @@ watch(() => appState.showIdentityModal, (newVal) => {
 
 const toggleFlip = (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-  vibrate(5);
+  vibrate(8); // 翻面时的清脆震动
   isFlipped.value = !isFlipped.value;
   if (isFlipped.value && !isCommentsLoaded.value) fetchComments();
 };
@@ -93,7 +96,8 @@ const toggleFlip = (e) => {
 const handleLike = (e) => {
   e.stopPropagation();
   if (isLiked.value) return; 
-  vibrate(15); isLiked.value = true; localLikes.value++; showPulse.value = true;
+  vibrate(15); // 点赞的厚实震动
+  isLiked.value = true; localLikes.value++; showPulse.value = true;
   setTimeout(() => { showPulse.value = false; }, 800);
   const supabase = getSupabase();
   supabase.from('photos').update({ likes: localLikes.value }).eq('id', props.photo.id).then();
@@ -109,9 +113,7 @@ onMounted(() => {
   appearObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => { 
       if (entry.isIntersecting) { 
-        requestAnimationFrame(() => {
-            isVisible.value = true; 
-        });
+        requestAnimationFrame(() => { isVisible.value = true; });
         appearObserver.unobserve(entry.target); 
       } 
     });
@@ -186,6 +188,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ✨ 增加基础触控优化，消除手机点击延迟与蓝光闪烁 */
+button, input, .card-inner {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 .card-wrapper { 
   transform: translate3d(0, 40px, 0) rotate(0deg); 
   opacity: 0; 
@@ -239,17 +247,32 @@ onBeforeUnmount(() => {
 .comment-input-box input { flex: 1; padding: 12px 15px; border: 1px solid #E8EDE9; border-radius: 14px; font-size: 13px; outline: none; background: #F7F9F8; transition: 0.3s; }
 .comment-input-box input:focus { border-color: var(--accent-color); background: #fff; box-shadow: 0 2px 10px rgba(140,161,146,0.1); }
 .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 12px; padding: 0 18px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-.comment-input-box button:active { transform: scale(0.95); }
+.comment-input-box button:active { transform: scale(0.95) translateY(2px); }
 .comment-input-box button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ✨ 新增：针对手机屏幕的极简优化 */
+/* ✨ 修复：针对手机屏幕进行全方位的等比例缩小，背面也完美适配！ */
 @media (max-width: 768px) {
-  /* 强制去除旋转角度，防止手机端因为旋转导致边角被截断 */
-  .card-wrapper.is-visible { 
-    transform: translate3d(0, 0, 0) rotate(0deg) !important; 
-  }
-  .card-front { padding: 10px 10px 15px 10px; }
-  .card-title { font-size: 14px; }
+  /* 强制去除旋转角度，防止边缘溢出 */
+  .card-wrapper.is-visible { transform: translate3d(0, 0, 0) rotate(0deg) !important; }
+  
+  /* 正面优化 */
+  .card-front { padding: 10px 10px 14px 10px; border-radius: 14px; }
+  .card-info { padding-top: 12px; }
+  .card-title { font-size: 14px; margin-bottom: 4px; }
   .card-author { font-size: 11px; }
+  .like-btn { font-size: 12px; bottom: 0; }
+  .like-btn svg { width: 16px; height: 16px; }
+  
+  /* 背面优化：全面缩小内边距与字体，拒绝“大字报” */
+  .card-back { border-radius: 14px; }
+  .back-header { padding: 12px 15px; font-size: 12px; letter-spacing: 2px; }
+  .comments-list { padding: 15px; font-size: 12px; }
+  .comment-item { margin-bottom: 12px; }
+  .empty-comment-tip { padding: 20px 10px; font-size: 12px; }
+  
+  /* 评论输入框极简适配 */
+  .comment-input-box { padding: 10px; gap: 8px; border-radius: 0 0 14px 14px; }
+  .comment-input-box input { padding: 10px 12px; font-size: 12px; border-radius: 10px; }
+  .comment-input-box button { padding: 0 14px; font-size: 12px; border-radius: 10px; }
 }
 </style>
