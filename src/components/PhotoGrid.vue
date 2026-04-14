@@ -5,7 +5,6 @@ import { appState, filteredPhotos, groupedTimelinePhotos } from '../store/state.
 import { SUPABASE_CONFIG, vibrate } from '../utils/core.js';
 import PhotoCard from './PhotoCard.vue';
 
-// ✨ 1. Supabase 终极单例化：利用 window 全局挂载，彻底消灭 Multiple Instances 警告
 const getSupabase = () => {
   if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
   if (!window.__supabaseClient) {
@@ -14,11 +13,10 @@ const getSupabase = () => {
   return window.__supabaseClient;
 };
 
-// ✨ 2. 音乐路径终极方案：利用环境判断，避开打包时的 file:/// 错误
 const musicUrl = import.meta.env.PROD ? '/thysummer./xvni.mp3' : '/xvni.mp3';
 
 const toggleMusic = () => {
-  vibrate(10);
+  vibrate(12); // 更饱满的音乐按钮震感
   const m = document.getElementById('bgMusic');
   const btn = document.getElementById('musicBtn');
   if (!m) return;
@@ -38,7 +36,6 @@ const toggleMusic = () => {
   }
 };
 
-// --- 3. 响应式布局与瀑布流逻辑 ---
 const colCount = ref(3);
 const updateColCount = () => {
   if (typeof window !== 'undefined') {
@@ -98,7 +95,6 @@ const getPairs = (list) => {
   return pairs;
 };
 
-// --- 4. 监听与加载 ---
 watch(filteredPhotos, async (newPhotos) => {
   if (newPhotos.length === 0) return;
   const unknownPhotos = newPhotos.filter(p => !photoRatios.value.has(p.id));
@@ -178,8 +174,12 @@ onBeforeUnmount(() => {
   position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 52px; height: 52px; 
   border-radius: 50%; cursor: pointer; background: conic-gradient(#111, #333, #111, #333, #111);
   border: 3px solid rgba(255,255,255,0.9); animation: diskSpin 5s linear infinite; animation-play-state: paused;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, transform 0.2s;
+  /* ✨ 消除点击延迟，找回失传已久的物理触感 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
+.music-disk:active { transform: scale(0.95); }
 .music-disk.playing { animation-play-state: running; box-shadow: 0 0 20px rgba(140, 161, 146, 0.4); }
 .music-disk.error-state { border-color: #e74c3c; animation: pulseError 1s infinite alternate; animation-play-state: running; }
 
@@ -196,14 +196,10 @@ onBeforeUnmount(() => {
 .tl-row { display: flex; width: 100%; position: relative; z-index: 1; }
 .tl-left, .tl-right { width: 50%; padding: 15px 40px; position: relative; }
 .tl-row::after { content: ''; position: absolute; width: 12px; height: 12px; background: white; border: 3px solid var(--accent-color); border-radius: 50%; top: 45px; left: 50%; transform: translateX(-50%); z-index: 3; box-shadow: 0 0 15px rgba(140,161,146,0.4); }
-  /* ✨ 强制岁月模式在手机端显示为一列，拒绝拥挤 */
+
+/* ✨ 彻底重写手机端“岁月模式”：坚决使用一列，释放图片空间 */
 @media (max-width: 768px) {
-  .tl-row { 
-    flex-direction: column !important; 
-  }
-  .tl-left, .tl-right { 
-    width: 100% !important; 
-    padding: 15px 20px 15px 40px !important; 
-  }
+  .tl-row { flex-direction: column !important; }
+  .tl-left, .tl-right { width: 100% !important; padding: 15px 20px 15px 40px !important; }
 }
 </style>
