@@ -1,19 +1,12 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { createClient } from '@supabase/supabase-js';
 import { appState, filteredPhotos, groupedTimelinePhotos } from '../store/state.js';
-import { SUPABASE_CONFIG, vibrate } from '../utils/core.js';
+import { hasSupabaseConfig } from '../utils/env.js';
+import { vibrate } from '../utils/core.js';
+import { getSupabaseClient } from '../utils/supabase.js';
 import PhotoCard from './PhotoCard.vue';
 
-const getSupabase = () => {
-  if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  if (!window.__supabaseClient) {
-    window.__supabaseClient = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  }
-  return window.__supabaseClient;
-};
-
-const musicUrl = import.meta.env.PROD ? '/thysummer./xvni.mp3' : '/xvni.mp3';
+const musicUrl = `${import.meta.env.BASE_URL}xvni.mp3`;
 
 const toggleMusic = () => {
   vibrate(12); // 更饱满的音乐按钮震感
@@ -26,7 +19,9 @@ const toggleMusic = () => {
       btn.classList.add('playing');
       btn.classList.remove('error-state');
     }).catch((err) => {
-      console.warn('🎶 回音无法唤醒，可能受到浏览器限制或网络波动', err);
+      if (err?.name !== 'AbortError' && import.meta.env.DEV) {
+        console.warn('🎶 回音无法唤醒，可能受到浏览器限制或网络波动', err);
+      }
       btn.classList.remove('playing');
       btn.classList.add('error-state');
     });
@@ -46,6 +41,11 @@ const updateColCount = () => {
 };
 
 const photoRatios = ref(new Map());
+const isLoadingPhotos = ref(hasSupabaseConfig);
+const loadError = ref('');
+const aboveTheFoldPhotoIds = computed(() => {
+  return readyPhotos.value.slice(0, Math.min(colCount.value, 3)).map((photo) => photo.id);
+});
 const sniffImageRatio = (photo) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -104,11 +104,21 @@ watch(filteredPhotos, async (newPhotos) => {
 onMounted(async () => {
   updateColCount();
   window.addEventListener('resize', updateColCount);
+  if (!hasSupabaseConfig) return;
   try {
-    const supabase = getSupabase(); 
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.from('photos').select('*').order('created_at', { ascending: false });
-    if (!error && data) appState.photos = data;
-  } catch (err) { console.error("Supabase 数据加载失败:", err); }
+    if (error) throw error;
+    if (data) appState.photos = data;
+    loadError.value = '';
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error("Supabase 数据加载失败:", err);
+    }
+    loadError.value = '记忆仓库暂时离线，请稍后再来看看。';
+  } finally {
+    isLoadingPhotos.value = false;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -123,7 +133,17 @@ onBeforeUnmount(() => {
     </audio>
     <div id="musicBtn" class="music-disk" @click="toggleMusic"></div>
 
-    <div v-if="filteredPhotos.length > 0 && readyPhotos.length === 0" class="loading-state">
+    <div v-if="!hasSupabaseConfig" class="empty-state empty-hint">
+      <strong>站点还差一步配置</strong>
+      <span>补齐 Supabase 环境变量后，照片和评论内容就会出现。</span>
+    </div>
+
+    <div v-else-if="loadError" class="empty-state empty-hint">
+      <strong>回忆暂时没有接通</strong>
+      <span>{{ loadError }}</span>
+    </div>
+
+    <div v-else-if="isLoadingPhotos || (filteredPhotos.length > 0 && readyPhotos.length === 0)" class="loading-state">
       <div class="pulse-loader"></div>
       <span>正在打捞记忆碎片...</span>
     </div>
@@ -140,6 +160,7 @@ onBeforeUnmount(() => {
             :key="photo.id + '-' + appState.searchQuery" 
             :photo="photo" 
             :aspectRatio="photoRatios.get(photo.id)" 
+            :priority="aboveTheFoldPhotoIds.includes(photo.id) ? 'high' : 'lazy'"
           />
         </div>
       </div>
@@ -150,10 +171,10 @@ onBeforeUnmount(() => {
         <div class="time-badge" v-if="getPairs(list).length > 0">{{ month }}</div>
         <div class="tl-row" v-for="(pair, idx) in getPairs(list)" :key="idx">
           <div class="tl-left">
-            <PhotoCard :key="'left-' + pair[0].id" :photo="pair[0]" :aspectRatio="photoRatios.get(pair[0].id)" />
+            <PhotoCard :key="'left-' + pair[0].id" :photo="pair[0]" :aspectRatio="photoRatios.get(pair[0].id)" :priority="idx === 0 ? 'high' : 'lazy'" />
           </div>
           <div class="tl-right" v-if="pair[1]">
-            <PhotoCard :key="'right-' + pair[1].id" :photo="pair[1]" :aspectRatio="photoRatios.get(pair[1].id)" />
+            <PhotoCard :key="'right-' + pair[1].id" :photo="pair[1]" :aspectRatio="photoRatios.get(pair[1].id)" :priority="idx === 0 ? 'high' : 'lazy'" />
           </div>
         </div>
       </div>
@@ -187,6 +208,8 @@ onBeforeUnmount(() => {
 @keyframes pulseError { from { box-shadow: 0 0 5px rgba(231,76,60,0.3); } to { box-shadow: 0 0 20px rgba(231,76,60,0.8); } }
 
 .empty-state, .loading-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+.empty-hint strong { color: var(--text-dark); font-size: 18px; font-weight: 700; }
+.empty-hint span { max-width: 420px; line-height: 1.8; }
 .pulse-loader { width: 16px; height: 16px; border-radius: 50%; background: var(--accent-color); animation: pulseBeat 1s infinite alternate; }
 @keyframes pulseBeat { from { transform: scale(0.8); opacity: 0.5; } to { transform: scale(1.2); opacity: 1; } }
 

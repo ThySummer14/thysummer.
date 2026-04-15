@@ -1,43 +1,64 @@
-# Astro Starter Kit: Minimal
+# 拾光集
 
-```sh
-pnpm create astro@latest -- --template minimal
+一个带有时间感和轻交互氛围的照片回忆站，基于 `Astro + Vue + Supabase` 构建。
+
+## 当前部署结构
+
+- 前端静态站建议部署到腾讯云 EdgeOne Pages
+- 数据库存放在 Supabase
+- 图片存储使用腾讯云 COS
+- 上传、评论、点赞、后台审核接口部署到 `node-functions`
+
+## 前端环境变量
+
+复制根目录的 `.env.example` 为 `.env`，然后填写：
+
+```bash
+PUBLIC_SITE_URL=https://your-edgeone-site.example.com
+PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+PUBLIC_UPLOAD_ENDPOINT=https://your-edgeone-site.example.com/api/upload
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+说明：
 
-## 🚀 Project Structure
+- `PUBLIC_SITE_URL` 用于 canonical、Open Graph 等公开元信息
+- `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 用于前端读取公开数据
+- `PUBLIC_UPLOAD_ENDPOINT` 指向 EdgeOne Pages API 的上传接口
 
-Inside of your Astro project, you'll see the following folders and files:
+## 本地开发
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+pnpm install
+pnpm dev
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+默认地址是 [http://localhost:4321](http://localhost:4321)。
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+如需本地联调 `node-functions`，请先按 EdgeOne 官方文档全局安装 CLI，然后在项目根目录运行：
 
-Any static assets, like images, can be placed in the `public/` directory.
+```bash
+edgeone pages dev
+```
 
-## 🧞 Commands
+## 构建前端
 
-All commands are run from the root of the project, from a terminal:
+```bash
+pnpm build
+pnpm preview
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+## 后端 API
 
-## 👀 Want to learn more?
+EdgeOne Pages 后端已经迁移到 `node-functions`。
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- `node-functions` 会自动映射到站点根路径下的 API 路由
+- 服务端共享逻辑放在 `server/edgeone-api`
+- 旧的 `examples/upload-service-node` 与 `vercel-api` 目录保留作参考
+
+## 数据与后台
+
+- Supabase 表结构与策略见 `supabase/schema.sql`
+- 上传接口约定见 `docs/upload-service.md`
+- 最小后台入口仍然是 `/admin`
+- 新上传的照片默认 `is_visible = false`，需要后台审核后才会公开显示

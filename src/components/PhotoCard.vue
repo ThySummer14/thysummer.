@@ -1,26 +1,23 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
-import { createClient } from '@supabase/supabase-js';
 import { appState } from '../store/state.js';
-import { vibrate, SUPABASE_CONFIG } from '../utils/core.js';
+import { hasSupabaseConfig } from '../utils/env.js';
+import { incrementLike, postComment, vibrate } from '../utils/core.js';
+import { getSupabaseClient } from '../utils/supabase.js';
 
 const props = defineProps({ 
   photo: { type: Object, required: true },
-  aspectRatio: { type: Number, required: true } 
+  aspectRatio: { type: Number, required: true },
+  priority: { type: String, default: 'lazy' },
 });
-
-const getSupabase = () => {
-  if (typeof window === 'undefined') return createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  if (!window.__supabaseClient) {
-    window.__supabaseClient = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-  }
-  return window.__supabaseClient;
-};
 
 const safeAspectRatio = computed(() => {
   const ratio = props.aspectRatio || 0.75;
   return Math.min(Math.max(ratio, 0.4), 2.5);
 });
+
+const imageLoading = computed(() => props.priority === 'high' ? 'eager' : 'lazy');
+const imageFetchPriority = computed(() => props.priority === 'high' ? 'high' : 'auto');
 
 const wrapperRef = ref(null);
 const isVisible = ref(false);
@@ -34,13 +31,39 @@ const comments = ref([]);
 const commentText = ref('');
 const isSubmittingComment = ref(false);
 const isCommentsLoaded = ref(false);
+const commentError = ref('');
+const isSubmittingLike = ref(false);
 
 const randomAngle = (Math.random() * 3 - 1.5).toFixed(2);
 
-const highlight = (text, query) => {
-  if (!query) return text;
-  const regex = new RegExp(`(${query})`, 'gi');
-  return text.replace(regex, '<span class="highlight-text">$1</span>');
+const getHighlightedParts = (text, query) => {
+  const source = String(text || '');
+  const keyword = String(query || '').trim();
+  if (!keyword) return [{ text: source, matched: false }];
+
+  const lowerSource = source.toLowerCase();
+  const lowerKeyword = keyword.toLowerCase();
+  const parts = [];
+  let startIndex = 0;
+  let matchIndex = lowerSource.indexOf(lowerKeyword);
+
+  while (matchIndex !== -1) {
+    if (matchIndex > startIndex) {
+      parts.push({ text: source.slice(startIndex, matchIndex), matched: false });
+    }
+    parts.push({
+      text: source.slice(matchIndex, matchIndex + keyword.length),
+      matched: true,
+    });
+    startIndex = matchIndex + keyword.length;
+    matchIndex = lowerSource.indexOf(lowerKeyword, startIndex);
+  }
+
+  if (startIndex < source.length) {
+    parts.push({ text: source.slice(startIndex), matched: false });
+  }
+
+  return parts.length > 0 ? parts : [{ text: source, matched: false }];
 };
 
 let appearObserver = null;
@@ -54,15 +77,29 @@ const handleGlobalClick = (e) => {
 };
 
 const fetchComments = async () => {
-  const supabase = getSupabase(); 
+  if (!hasSupabaseConfig) return;
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.from('comments').select('*').eq('photo_id', props.photo.id).order('created_at', { ascending: true });
-  if (!error && data) { comments.value = data; isCommentsLoaded.value = true; }
+  if (!error && data) {
+    comments.value = data;
+    commentError.value = '';
+    isCommentsLoaded.value = true;
+    return;
+  }
+
+  commentError.value = '回音暂时没有接通';
+  isCommentsLoaded.value = true;
 };
 
 const handleSendComment = async (e) => {
   e.stopPropagation();
   const text = commentText.value.trim();
   if (!text) { vibrate(10); return; }
+  if (text.length > 120) {
+    if (window.showToast) window.showToast('留言请控制在 120 个字以内', 'error');
+    vibrate(20);
+    return;
+  }
   
   const nickname = localStorage.getItem('nickname');
   if (!nickname) {
@@ -72,14 +109,26 @@ const handleSendComment = async (e) => {
   }
 
   isSubmittingComment.value = true;
-  const supabase = getSupabase();
-  const { error } = await supabase.from('comments').insert([{ photo_id: props.photo.id, nickname, content: text }]);
-  isSubmittingComment.value = false;
-  if (!error) { 
-    commentText.value = ''; 
-    fetchComments(); 
+  commentError.value = '';
+
+  try {
+    const insertedComment = await postComment({
+      photoId: props.photo.id,
+      nickname,
+      content: text,
+    });
+
+    commentText.value = '';
+    comments.value = [...comments.value, insertedComment];
+    isCommentsLoaded.value = true;
     vibrate([10, 20]); // 成功发送后的轻微确认震动
-  } 
+    if (window.showToast) window.showToast('回音已经落在这一页', 'success');
+  } catch (error) {
+    commentError.value = '留言失败，请稍后再试';
+    if (window.showToast) window.showToast('留言失败，请稍后再试', 'error');
+  } finally {
+    isSubmittingComment.value = false;
+  }
 };
 
 watch(() => appState.showIdentityModal, (newVal) => {
@@ -95,12 +144,24 @@ const toggleFlip = (e) => {
 
 const handleLike = (e) => {
   e.stopPropagation();
-  if (isLiked.value) return; 
+  if (isLiked.value || isSubmittingLike.value) return; 
   vibrate(15); // 点赞的厚实震动
+  isSubmittingLike.value = true;
+  const previousLikes = localLikes.value;
   isLiked.value = true; localLikes.value++; showPulse.value = true;
   setTimeout(() => { showPulse.value = false; }, 800);
-  const supabase = getSupabase();
-  supabase.from('photos').update({ likes: localLikes.value }).eq('id', props.photo.id).then();
+  incrementLike({ photoId: props.photo.id })
+    .then((likes) => {
+      localLikes.value = likes;
+    })
+    .catch(() => {
+      isLiked.value = false;
+      localLikes.value = previousLikes;
+      if (window.showToast) window.showToast('点赞失败，请稍后再试', 'error');
+    })
+    .finally(() => {
+      isSubmittingLike.value = false;
+    });
 };
 
 onMounted(() => {
@@ -145,7 +206,8 @@ onBeforeUnmount(() => {
         <div class="img-container" :style="{ aspectRatio: safeAspectRatio }">
           <img 
             :src="photo.image_url" 
-            loading="lazy" 
+            :loading="imageLoading"
+            :fetchpriority="imageFetchPriority"
             decoding="async"
             :class="{ 'loaded': imageLoaded }" 
             @load="imageLoaded = true" 
@@ -154,8 +216,20 @@ onBeforeUnmount(() => {
           />
         </div>
         <div class="card-info">
-          <p class="card-title" v-html="highlight(photo.title, appState.searchQuery)"></p>
-          <p class="card-author" v-html="'@' + highlight(photo.author, appState.searchQuery)"></p>
+          <p class="card-title">
+            <span
+              v-for="(part, index) in getHighlightedParts(photo.title, appState.searchQuery)"
+              :key="`title-${photo.id}-${index}`"
+              :class="{ 'highlight-text': part.matched }"
+            >{{ part.text }}</span>
+          </p>
+          <p class="card-author">
+            @<span
+              v-for="(part, index) in getHighlightedParts(photo.author, appState.searchQuery)"
+              :key="`author-${photo.id}-${index}`"
+              :class="{ 'highlight-text': part.matched }"
+            >{{ part.text }}</span>
+          </p>
           <button class="like-btn" :class="{ 'liked': isLiked }" @click="handleLike">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.17 2.02c-.17.01-.35.03-.52.06-1.54.26-3.08 1.05-4.32 2.29-1.24 1.24-2.03 2.78-2.29 4.32-.26 1.54.03 3.12.83 4.47l-3.32 3.32c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.32-3.32c1.35.8 2.93 1.09 4.47.83 1.54-.26 3.08-1.05 4.32-2.29 1.24-1.24 2.03-2.78 2.29-4.32.26-1.54-.03-3.12-.83-4.47l.5-.5c.39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0l-.5.5c-1.04-.62-2.26-.95-3.48-.97zM11 9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
@@ -170,7 +244,9 @@ onBeforeUnmount(() => {
       <div class="card-back">
         <div class="back-header">拾光回音</div>
         <div class="comments-list">
-          <div v-if="!isCommentsLoaded" class="empty-comment-tip" style="opacity: 0.4;">打捞回音中...</div>
+          <div v-if="!hasSupabaseConfig" class="empty-comment-tip">评论功能暂未开放配置。</div>
+          <div v-else-if="!isCommentsLoaded" class="empty-comment-tip" style="opacity: 0.4;">打捞回音中...</div>
+          <div v-else-if="commentError" class="empty-comment-tip">{{ commentError }}</div>
           <div v-else-if="comments.length === 0" class="empty-comment-tip">写下第一句共鸣吧。</div>
           <div v-else v-for="c in comments" :key="c.id" class="comment-item">
             <span style="color:var(--accent-color); font-weight:700;">{{ c.nickname }}</span>
@@ -179,9 +255,10 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="comment-input-box">
-          <input type="text" v-model="commentText" placeholder="落笔共鸣..." autocomplete="off" @keydown.enter="handleSendComment" :disabled="isSubmittingComment">
-          <button @click="handleSendComment" :disabled="isSubmittingComment">留印</button>
+          <input type="text" v-model="commentText" placeholder="落笔共鸣..." autocomplete="off" maxlength="120" @keydown.enter="handleSendComment" :disabled="isSubmittingComment || !hasSupabaseConfig">
+          <button @click="handleSendComment" :disabled="isSubmittingComment || !hasSupabaseConfig">{{ isSubmittingComment ? '寄送中' : '留印' }}</button>
         </div>
+        <div class="comment-meta">{{ commentText.trim().length }}/120</div>
       </div>
     </div>
   </div>
@@ -249,6 +326,7 @@ button, input, .card-inner {
 .comment-input-box button { background: var(--accent-color); color: white; border: none; border-radius: 12px; padding: 0 18px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; }
 .comment-input-box button:active { transform: scale(0.95) translateY(2px); }
 .comment-input-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+.comment-meta { padding: 0 16px 12px; text-align: right; font-size: 11px; color: var(--text-muted); background: #fff; }
 
 /* ✨ 修复：针对手机屏幕进行全方位的等比例缩小，背面也完美适配！ */
 @media (max-width: 768px) {
@@ -274,5 +352,6 @@ button, input, .card-inner {
   .comment-input-box { padding: 10px; gap: 8px; border-radius: 0 0 14px 14px; }
   .comment-input-box input { padding: 10px 12px; font-size: 12px; border-radius: 10px; }
   .comment-input-box button { padding: 0 14px; font-size: 12px; border-radius: 10px; }
+  .comment-meta { padding: 0 12px 10px; font-size: 10px; }
 }
 </style>

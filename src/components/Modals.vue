@@ -4,9 +4,10 @@
  * @description 全局模态框引擎 - 探针级上传与安卓触感调优
  */
 import { ref, onMounted, watch } from 'vue';
-import { createClient } from '@supabase/supabase-js';
-import { appState } from '../store/state.js';
-import { vibrate, uploadToCOS, SUPABASE_CONFIG } from '../utils/core.js';
+import { appState, prependPhoto } from '../store/state.js';
+import { hasSupabaseConfig, hasUploadEndpoint } from '../utils/env.js';
+import { postComment, vibrate, uploadMemory } from '../utils/core.js';
+import { getSupabaseClient } from '../utils/supabase.js';
 
 // --- 上传信笺状态 ---
 const photoFile = ref(null);
@@ -14,6 +15,8 @@ const photoTitle = ref('');
 const uploaderName = ref('');
 const uploadBtnText = ref('封存');
 const isSubmitting = ref(false);
+const uploadPreviewUrl = ref('');
+const uploadMeta = ref('');
 
 // --- 时光旅人状态 ---
 const identityName = ref('');
@@ -31,6 +34,61 @@ watch(() => appState.isUploading, (newVal) => {
     uploaderName.value = localStorage.getItem('nickname') || '';
   }
 });
+
+const clearUploadDraft = () => {
+  photoTitle.value = '';
+  uploadMeta.value = '';
+  if (photoFile.value) photoFile.value.value = '';
+  if (uploadPreviewUrl.value && typeof URL !== 'undefined') {
+    URL.revokeObjectURL(uploadPreviewUrl.value);
+  }
+  uploadPreviewUrl.value = '';
+};
+
+const getUploadErrorMessage = (error) => {
+  const code = String(error?.code || '');
+
+  if (code === 'INVALID_FILE_TYPE') return '只支持 jpg、png、webp 图片';
+  if (code === 'FILE_TOO_LARGE') return '图片请控制在 6MB 以内';
+  if (code === 'MISSING_FIELDS') return '标题和署名都要填写完整';
+  if (code === 'INVALID_METADATA') return '标题或署名太长了，请缩短后再试';
+  if (code === 'MISSING_ENV') return '上传服务环境变量还没配置完整';
+
+  return '上传失败，请稍后再试';
+};
+
+const handleFileChange = (event) => {
+  const file = event.target?.files?.[0];
+  if (!file) {
+    uploadMeta.value = '';
+    if (uploadPreviewUrl.value && typeof URL !== 'undefined') {
+      URL.revokeObjectURL(uploadPreviewUrl.value);
+    }
+    uploadPreviewUrl.value = '';
+    return;
+  }
+
+  const isImage = file.type.startsWith('image/');
+  if (!isImage) {
+    if (window.showToast) window.showToast('只支持上传图片文件', 'error');
+    if (photoFile.value) photoFile.value.value = '';
+    return;
+  }
+
+  const maxSize = 6 * 1024 * 1024;
+  if (file.size > maxSize) {
+    if (window.showToast) window.showToast('图片请控制在 6MB 以内', 'error');
+    if (photoFile.value) photoFile.value.value = '';
+    return;
+  }
+
+  if (uploadPreviewUrl.value && typeof URL !== 'undefined') {
+    URL.revokeObjectURL(uploadPreviewUrl.value);
+  }
+
+  uploadPreviewUrl.value = URL.createObjectURL(file);
+  uploadMeta.value = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+};
 
 // ==========================================
 // 🚀 核心：离屏图像处理引擎 (优化版)
@@ -56,7 +114,9 @@ async function compressImage(file) {
       return new Promise(res => canvas.toBlob(res, 'image/webp', 0.82));
     }
   } catch (e) {
-    console.error("🖼️ 图片压缩失败:", e);
+    if (import.meta.env.DEV) {
+      console.error("🖼️ 图片压缩失败:", e);
+    }
     return file; // 降级处理：直接返回原文件
   }
 }
@@ -65,10 +125,27 @@ async function compressImage(file) {
 // 🌌 核心：投递逻辑 (接入探针引擎)
 // ==========================================
 const submitPhoto = async () => {
+  if (!hasUploadEndpoint) {
+    if (window.showToast) window.showToast("上传服务尚未完成配置", "error");
+    return;
+  }
+
   const file = photoFile.value?.files[0];
   if (!file || !photoTitle.value.trim() || !uploaderName.value.trim()) {
     if (window.showToast) window.showToast("墨水似乎不够，请填写完整", "error");
     vibrate(40); 
+    return;
+  }
+
+  if (photoTitle.value.trim().length > 40) {
+    if (window.showToast) window.showToast("标题请控制在 40 个字以内", "error");
+    vibrate(30);
+    return;
+  }
+
+  if (uploaderName.value.trim().length > 20) {
+    if (window.showToast) window.showToast("署名请控制在 20 个字以内", "error");
+    vibrate(30);
     return;
   }
 
@@ -81,35 +158,33 @@ const submitPhoto = async () => {
     const finalFile = await compressImage(file);
 
     uploadBtnText.value = "跨越星海...";
-    // 调用 core.js 里的探针引擎
-    const imageUrl = await uploadToCOS(finalFile);
-
-    uploadBtnText.value = "落笔生花...";
-    // 实例化 Supabase
-    const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-    const { error: dbError } = await supabase.from('photos').insert([{
+    const insertedPhoto = await uploadMemory({
+      file: finalFile,
       title: photoTitle.value.trim(),
       author: uploaderName.value.trim(),
-      image_url: imageUrl 
-    }]);
+    });
 
-    if (dbError) throw dbError;
-
-    if (window.showToast) window.showToast("信笺已封存", "success");
+    if (window.showToast) {
+      window.showToast(
+        insertedPhoto?.is_visible === false ? "信笺已封存，等待后台公开" : "信笺已封存",
+        "success"
+      );
+    }
     
     vibrate([20, 50, 20]); 
     
     // 自动重置并关闭
-    photoTitle.value = '';
-    if (photoFile.value) photoFile.value.value = '';
+    clearUploadDraft();
     appState.isUploading = false;
-    
-    // 延迟重载页面以同步数据
-    setTimeout(() => window.location.reload(), 1200);
+    if (insertedPhoto?.is_visible !== false) {
+      prependPhoto(insertedPhoto);
+    }
 
   } catch (err) {
-    console.error("❌ 投递流程意外中断:", err);
-    if (window.showToast) window.showToast("星空拥堵，请看控制台报错", "error");
+    if (import.meta.env.DEV) {
+      console.error("❌ 投递流程意外中断:", err);
+    }
+    if (window.showToast) window.showToast(getUploadErrorMessage(err), "error");
     vibrate([50, 100, 50]); 
   } finally {
     isSubmitting.value = false;
@@ -120,6 +195,7 @@ const submitPhoto = async () => {
 const closeUpload = () => { 
   if(!isSubmitting.value) {
     vibrate(5); 
+    clearUploadDraft();
     appState.isUploading = false; 
   }
 };
@@ -139,11 +215,19 @@ const confirmIdentity = async () => {
   vibrate([15, 30]); 
   appState.showIdentityModal = false;
 
+  if (!hasSupabaseConfig) {
+    appState.pendingCommentAction = null;
+    return;
+  }
+
   if (appState.pendingCommentAction) {
     const { id, content } = appState.pendingCommentAction;
     try {
-      const supabase = createClient(SUPABASE_CONFIG.Url, SUPABASE_CONFIG.Key);
-      await supabase.from('comments').insert([{ photo_id: id, nickname: name, content }]);
+      await postComment({
+        photoId: id,
+        nickname: name,
+        content,
+      });
       if (window.showToast) window.showToast('留印成功', 'success');
       appState.pendingCommentAction = null;
     } catch(err) {
@@ -165,9 +249,18 @@ const closeIdentity = () => {
       
       <div class="modal-box" v-if="appState.isUploading">
         <h3 class="modal-title">时光信笺</h3>
-        <input type="file" ref="photoFile" accept="image/*" class="input-box file-box" :disabled="isSubmitting">
-        <input type="text" v-model="photoTitle" placeholder="给这段回忆起个名字..." class="input-box" autocomplete="off" :disabled="isSubmitting">
-        <input type="text" v-model="uploaderName" placeholder="你的署名" class="input-box" autocomplete="off" :disabled="isSubmitting">
+        <input type="file" ref="photoFile" accept="image/*" class="input-box file-box" :disabled="isSubmitting" @change="handleFileChange">
+        <p class="helper-text">支持常见图片格式，建议上传竖图或生活瞬间。</p>
+
+        <div v-if="uploadPreviewUrl" class="preview-card">
+          <img :src="uploadPreviewUrl" alt="上传预览" class="preview-image">
+          <p class="preview-meta">{{ uploadMeta }}</p>
+        </div>
+
+        <input type="text" v-model="photoTitle" placeholder="给这段回忆起个名字..." class="input-box" autocomplete="off" maxlength="40" :disabled="isSubmitting">
+        <div class="field-meta">{{ photoTitle.trim().length }}/40</div>
+        <input type="text" v-model="uploaderName" placeholder="你的署名" class="input-box" autocomplete="off" maxlength="20" :disabled="isSubmitting">
+        <div class="field-meta">{{ uploaderName.trim().length }}/20</div>
         
         <div class="btn-group">
           <button class="btn-shiguang" @click="closeUpload" :disabled="isSubmitting">收起</button>
@@ -233,6 +326,22 @@ const closeIdentity = () => {
   line-height: 1.6;
 }
 
+.helper-text,
+.field-meta,
+.preview-meta {
+  font-size: 12px;
+  color: var(--text-muted, #8B9992);
+}
+
+.helper-text {
+  margin: -6px 0 14px;
+}
+
+.field-meta {
+  text-align: right;
+  margin: -10px 4px 14px 0;
+}
+
 /* 晨雾青输入框设计 */
 .input-box {
   width: 100%;
@@ -261,6 +370,26 @@ const closeIdentity = () => {
   border-style: dashed;
   cursor: pointer;
   padding: 12px;
+}
+
+.preview-card {
+  margin-bottom: 18px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(140, 161, 146, 0.08);
+  border: 1px solid rgba(140, 161, 146, 0.15);
+}
+
+.preview-image {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.preview-meta {
+  padding: 10px 12px 12px;
+  text-align: center;
 }
 
 .btn-group {

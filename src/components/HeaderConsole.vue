@@ -1,5 +1,6 @@
 <script setup>
 import { appState } from '../store/state.js';
+import { hasUploadEndpoint } from '../utils/env.js';
 import { vibrate } from '../utils/core.js';
 
 let searchTimer = null;
@@ -10,7 +11,14 @@ const handleSearch = (e) => {
 };
 
 const toggleMode = () => { vibrate(15); appState.currentMode = appState.currentMode === 'gallery' ? 'timeline' : 'gallery'; };
-const openUpload = () => { vibrate(10); appState.isUploading = true; };
+const openUpload = () => {
+  if (!hasUploadEndpoint) {
+    if (window.showToast) window.showToast('暂未配置安全上传服务', 'error');
+    return;
+  }
+  vibrate(10);
+  appState.isUploading = true;
+};
 const exportData = () => {
   vibrate([20, 30, 20]);
   try {
@@ -46,7 +54,9 @@ const exportData = () => {
           <span v-if="appState.currentMode === 'gallery'">🕰️ 岁月模式</span>
           <span v-else>🖼️ 画廊模式</span>
         </button>
-        <button class="btn-shiguang primary" @click="openUpload">✨ 珍藏此刻</button>
+        <button class="btn-shiguang primary" :disabled="!hasUploadEndpoint" @click="openUpload">
+          {{ hasUploadEndpoint ? '✨ 珍藏此刻' : '🔒 上传待配置' }}
+        </button>
         <button class="btn-shiguang" @click="exportData" title="导出备份">📦 备份记忆</button>
       </div>
     </div>
@@ -87,6 +97,7 @@ const exportData = () => {
 .btn-shiguang.primary { background: var(--accent-color); color: white; border-color: transparent; box-shadow: 0 8px 20px rgba(140, 161, 146, 0.2); }
 .btn-shiguang:hover { transform: translate3d(0, -3px, 0); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
 .btn-shiguang:active { transform: translate3d(0, 1px, 0) scale(0.97); }
+.btn-shiguang:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ✨ 移动端深度适配 */
 @media (max-width: 600px) {

@@ -7,8 +7,22 @@ import BackgroundFx from '../components/BackgroundFx.vue';
 import Toast from '../components/Toast.vue';
 // ✨ 修复 1：已经彻底删除了 import MusicPlayer 的引入
 import Modals from '../components/Modals.vue';
+import { publicEnv } from '../utils/env.js';
 
-const { title = "拾光集 - 岁月留影" } = Astro.props;
+const {
+    title = "拾光集 - 岁月留影",
+    description = "一个承载照片、回音与岁月纹理的私人记忆角落。",
+    ogImage = 'favicon.ico',
+} = Astro.props;
+const normalizedSiteUrl = publicEnv.siteUrl.replace(/\/$/, '');
+const buildAbsoluteUrl = (path) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (!normalizedSiteUrl) return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+    return `${normalizedSiteUrl}${normalizedPath}`;
+};
+const faviconUrl = `${import.meta.env.BASE_URL}favicon.ico`;
+const socialImageUrl = buildAbsoluteUrl(ogImage);
+const canonicalUrl = normalizedSiteUrl ? `${normalizedSiteUrl}${Astro.url.pathname}` : null;
 ---
 
 <!DOCTYPE html>
@@ -17,12 +31,24 @@ const { title = "拾光集 - 岁月留影" } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{title}</title>
-    
-    <link rel="preconnect" href="https://fastly.jsdelivr.net">
-    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/ThySummer14/thysummer.@main/public/favicon.ico" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#8CA192" />
+    <link rel="icon" type="image/x-icon" href={faviconUrl} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={socialImageUrl} />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageUrl} />
 
     <script is:inline>
-        if ('serviceWorker' in navigator) {
+        if (import.meta.env.PROD && 'serviceWorker' in navigator) {
             const swCode = `
                 const CACHE_NAME = 'shiguang-v2026-final';
                 self.addEventListener('fetch', e => {
@@ -48,7 +74,7 @@ const { title = "拾光集 - 岁月留影" } = Astro.props;
                 });
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => console.log('SW 跳过'));
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
         }
     </script>
 

@@ -18,6 +18,11 @@ export const appState = reactive({
     pendingCommentAction: null  
 });
 
+export const prependPhoto = (photo) => {
+    if (!photo) return;
+    appState.photos = [photo, ...appState.photos.filter(item => item.id !== photo.id)];
+};
+
 // 核心内存检索逻辑
 export const filteredPhotos = computed(() => {
     const q = appState.searchQuery.toLowerCase().trim();

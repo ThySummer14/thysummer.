@@ -1,26 +1,10 @@
 /**
  * @file src/utils/core.js
- * @description 2026 旗舰版 - 核心架构引擎与基础 API 封装
+ * @description Core browser helpers and upload bridge
  */
-import COS from 'cos-js-sdk-v5';
+import { hasUploadEndpoint, publicEnv, uploadServiceBase } from './env.js';
 
-// 🛡️ SSR 安全防线：动态判断是否在浏览器环境
 export const isClient = typeof window !== 'undefined';
-
-// ==========================================
-// ⚙️ 核心架构与后端配置 (Cloud Configs)
-// ==========================================
-export const COS_CONFIG = {
-    SecretId: 'AKIDcSIyb6LHfzGL' + 'BoEPM4XmocFdu8D4iFcm',
-    SecretKey: 'xgIuRvJfsrbIqhKt' + 'QwKi4II3OeolU0JN',
-    Bucket: 'thysummer-1420216801', 
-    Region: 'ap-beijing'
-};
-
-export const SUPABASE_CONFIG = {
-    Url: 'https://vwuulslskezoerbtnjte.supabase.co',
-    Key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dXVsc2xza2V6b2VyYnRuanRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjQ1NTQsImV4cCI6MjA5MTMwMDU1NH0.bEBeflj63BjeOD_mv20bD-gIXY8O6NunBOkjp6JtokI'
-};
 
 // ==========================================
 // 🧠 三级任务调度引擎 (High-Fidelity Scheduler)
@@ -56,63 +40,101 @@ export const vibrate = (pattern = 20) => {
             window.navigator.vibrate(pattern); 
         }
     } catch(e) {
-        console.warn("📳 触觉引擎调用受限，已安全降级", e);
+        if (import.meta.env.DEV) {
+            console.warn("📳 触觉引擎调用受限，已安全降级", e);
+        }
     } 
 };
 
-// ==========================================
-// ☁️ 腾讯云 COS 探针式直传引擎 (Diagnostic Upload)
-// ==========================================
-export const uploadToCOS = async (file) => {
-    return new Promise((resolve, reject) => {
-        try {
-            // 1. 初始化 SDK
-            const cos = new COS({ 
-                SecretId: COS_CONFIG.SecretId, 
-                SecretKey: COS_CONFIG.SecretKey 
-            });
+const buildApiError = async (response, fallbackMessage) => {
+    let errorCode = '';
 
-            // ✨ 修复点：兼容离屏压缩后的 WebP 没有 name 属性的情况
-            const originalName = file.name || 'shiguang-memory.webp';
-            
-            // 2. 净化文件名，防止特殊字符导致签名失败
-            const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-            const key = `photos/${Date.now()}-${safeFileName}`;
+    try {
+        const payload = await response.clone().json();
+        errorCode = typeof payload?.error === 'string' ? payload.error : '';
+    } catch (_error) {
+        errorCode = '';
+    }
 
-            // ✨ 主题日志：上传开始
-            console.log("🕊️ 时光信笺正在跨越岁月...", key);
+    const error = new Error(errorCode ? `${fallbackMessage} (${errorCode})` : fallbackMessage);
+    error.status = response.status;
+    error.code = errorCode;
+    return error;
+};
 
-            // 3. 执行直传
-            cos.putObject({
-                Bucket: COS_CONFIG.Bucket, 
-                Region: COS_CONFIG.Region, 
-                Key: key, 
-                Body: file,
-            }, (err, data) => {
-                // 🔴 致命错误捕获层
-                if (err) {
-                    // ✨ 主题日志：上传失败
-                    console.error("❌ [信笺迷途] 投递未达，回音飘散:", err);
-                    
-                    if (err.statusCode === 403) {
-                        console.error("🚨 诊断结论: 权限拒绝！请前往腾讯云控制台检查 CORS(跨域访问) 规则。");
-                    } else if (err.error === "Network Error") {
-                        console.error("🚨 诊断结论: 网络连接被重置，可能是跨域预检 (OPTIONS) 失败！");
-                    }
-                    
-                    reject(err);
-                    return;
-                }
-                
-                // 🟢 成功解析层
-                // ✨ 主题日志：上传成功
-                console.log("✅ [落笔生花] 信笺已安放于拾光集，数据:", data);
-                const publicUrl = `https://${COS_CONFIG.Bucket}.cos.${COS_CONFIG.Region}.myqcloud.com/${key}`;
-                resolve(publicUrl);
-            });
-        } catch (e) {
-            console.error("❌ [COS SDK 实例化引擎崩溃]:", e);
-            reject(e);
-        }
+export const uploadMemory = async ({ file, title, author }) => {
+    if (!hasUploadEndpoint) {
+        throw new Error('Missing PUBLIC_UPLOAD_ENDPOINT.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'shiguang-memory.webp');
+    formData.append('title', title);
+    formData.append('author', author);
+
+    const response = await fetch(publicEnv.uploadEndpoint, {
+        method: 'POST',
+        body: formData,
     });
+
+    if (!response.ok) {
+        throw await buildApiError(response, `Upload failed with status ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    if (!payload?.photo) {
+        throw new Error('Upload endpoint did not return a photo record.');
+    }
+
+    return payload.photo;
+};
+
+export const postComment = async ({ photoId, nickname, content }) => {
+    if (!hasUploadEndpoint) {
+        throw new Error('Missing PUBLIC_UPLOAD_ENDPOINT.');
+    }
+
+    const response = await fetch(`${uploadServiceBase}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            photoId,
+            nickname,
+            content,
+        }),
+    });
+
+    if (!response.ok) {
+        throw await buildApiError(response, `Comment failed with status ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    if (!payload?.comment) {
+        throw new Error('Comment endpoint did not return a comment record.');
+    }
+
+    return payload.comment;
+};
+
+export const incrementLike = async ({ photoId }) => {
+    if (!hasUploadEndpoint) {
+        throw new Error('Missing PUBLIC_UPLOAD_ENDPOINT.');
+    }
+
+    const response = await fetch(`${uploadServiceBase}/photos/${photoId}/like`, {
+        method: 'POST',
+    });
+
+    if (!response.ok) {
+        throw await buildApiError(response, `Like failed with status ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    if (typeof payload?.likes !== 'number') {
+        throw new Error('Like endpoint did not return the updated like count.');
+    }
+
+    return payload.likes;
 };
