@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AdminDashboard from '../components/AdminDashboard.vue';
+---
+
+<Layout
+  title="拾光集后台"
+  description="用于审核照片与评论的管理入口。"
+>
+  <AdminDashboard client:load />
+</Layout>

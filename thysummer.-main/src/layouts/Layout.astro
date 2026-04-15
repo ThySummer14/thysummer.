@@ -1,0 +1,119 @@
+---
+/**
+ * @file src/layouts/Layout.astro
+ * @description 2026 旗舰级 Astro 布局基座 (Phase 5 终极合体版)
+ */
+import BackgroundFx from '../components/BackgroundFx.vue';
+import Toast from '../components/Toast.vue';
+// ✨ 修复 1：已经彻底删除了 import MusicPlayer 的引入
+import Modals from '../components/Modals.vue';
+import { publicEnv } from '../utils/env.js';
+
+const {
+    title = "拾光集 - 岁月留影",
+    description = "一个承载照片、回音与岁月纹理的私人记忆角落。",
+    ogImage = 'favicon.ico',
+} = Astro.props;
+const normalizedSiteUrl = publicEnv.siteUrl.replace(/\/$/, '');
+const buildAbsoluteUrl = (path) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (!normalizedSiteUrl) return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+    return `${normalizedSiteUrl}${normalizedPath}`;
+};
+const faviconUrl = `${import.meta.env.BASE_URL}favicon.ico`;
+const socialImageUrl = buildAbsoluteUrl(ogImage);
+const canonicalUrl = normalizedSiteUrl ? `${normalizedSiteUrl}${Astro.url.pathname}` : null;
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#8CA192" />
+    <link rel="icon" type="image/x-icon" href={faviconUrl} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={socialImageUrl} />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageUrl} />
+
+    <script is:inline>
+        if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'shiguang-v2026-final';
+                self.addEventListener('fetch', e => {
+                    // 🛡️ 精准路由门神：绝对放行非 GET 请求，以及所有数据库和图床请求
+                    if (
+                        e.request.method !== 'GET' || 
+                        e.request.url.includes('supabase.co') || 
+                        e.request.url.includes('myqcloud.com')
+                    ) {
+                        return; 
+                    }
+                    
+                    e.respondWith(
+                        caches.match(e.request).then(res => {
+                            return res || fetch(e.request).then(fetchRes => {
+                                return caches.open(CACHE_NAME).then(cache => { 
+                                    cache.put(e.request, fetchRes.clone()); 
+                                    return fetchRes; 
+                                });
+                            });
+                        }).catch(() => {})
+                    );
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        }
+    </script>
+
+    <style is:global>
+        :root {
+            --bg-base: #F7F9F8; 
+            --text-dark: #2C3631; 
+            --text-muted: #8B9992; 
+            --accent-color: #8CA192; 
+            --accent-hover: #7A9080;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-console: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.9);
+            --shadow-soft: 0 12px 35px rgba(0,0,0,0.04);
+            --shadow-float: 0 25px 50px rgba(140, 161, 146, 0.15);
+            --cubic-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --cubic-smooth: cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%) fixed;
+            color: var(--text-dark); 
+            min-height: 100vh; 
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body>
+    <BackgroundFx client:only="vue" />
+
+    <div style="position: relative; z-index: 10;">
+        <slot />
+    </div>
+
+    <Toast client:load />
+    <Modals client:load />
+    </body>
+</html>

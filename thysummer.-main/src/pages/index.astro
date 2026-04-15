@@ -1,0 +1,18 @@
+---
+/**
+ * @file src/pages/index.astro
+ * @description 《拾光集》主入口 - 数据接驳最终版
+ */
+import Layout from '../layouts/Layout.astro';
+import HeaderConsole from '../components/HeaderConsole.vue';
+import PhotoGrid from '../components/PhotoGrid.vue';
+---
+
+<Layout
+    title="拾光集 - 岁月留影"
+    description="一封可被看见、翻阅、回响的线上时光信笺。"
+>
+    <HeaderConsole client:load />
+
+    <PhotoGrid client:load />
+</Layout>
