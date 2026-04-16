@@ -25,7 +25,7 @@ const getAdminErrorMessage = (error) => {
   }
 
   if (status === 404) {
-    return '后台接口地址不对，或者 EdgeOne Pages 的 API 还没有部署成功。';
+    return '后台接口地址不对，或者 Vercel API 还没有部署成功。';
   }
 
   if (status >= 500) {

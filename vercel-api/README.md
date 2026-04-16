@@ -1,11 +1,11 @@
 # Thysummer Vercel API
 
-This folder contains the backend API deployment target for Vercel.
+This folder is the backend deployment target for Vercel.
 
 ## Deploy shape
 
-- GitHub Pages: frontend only
-- Vercel: this `vercel-api` folder only
+- Vercel frontend project: repo root
+- Vercel backend project: this `vercel-api` folder only
 - Supabase: database
 - Tencent COS: image storage
 
@@ -23,6 +23,12 @@ This folder contains the backend API deployment target for Vercel.
 ## Environment variables
 
 Copy `.env.example` to `.env.local` for local Vercel development, then fill in all values.
+
+Typical production mapping:
+
+- frontend domain: `https://shguty.cn`
+- backend domain: `https://api.shguty.cn`
+- `CORS_ORIGIN=https://shguty.cn`
 
 ## Local development
 

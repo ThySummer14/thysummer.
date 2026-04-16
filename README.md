@@ -1,64 +1,78 @@
 # 拾光集
 
-一个带有时间感和轻交互氛围的照片回忆站，基于 `Astro + Vue + Supabase` 构建。
+一个给亲友一起看照片、上传回忆、评论互动的小网站，前端使用 `Astro + Vue`，公开数据放在 Supabase，图片放在腾讯云 COS。
 
-## 当前部署结构
+## 当前部署方案
 
-- 前端静态站建议部署到腾讯云 EdgeOne Pages
-- 数据库存放在 Supabase
-- 图片存储使用腾讯云 COS
-- 上传、评论、点赞、后台审核接口部署到 `node-functions`
+- 前端：Vercel 项目，部署仓库根目录
+- 后端：Vercel 项目，部署 `vercel-api/`
+- 数据库：Supabase
+- 图片存储：腾讯云 COS
+
+## 仓库结构
+
+- 根目录：前端站点和 `/admin` 页面
+- `vercel-api/`：上传、评论、点赞、后台审核 API
+- `supabase/schema.sql`：数据库结构、函数、RLS 策略
+- `docs/upload-service.md`：接口和部署说明
+- `examples/upload-service-node/`：本地 Node 示例，仅保留作参考，不参与正式部署
 
 ## 前端环境变量
 
-复制根目录的 `.env.example` 为 `.env`，然后填写：
+把根目录的 `.env.example` 复制成 `.env`，然后填写：
 
 ```bash
-PUBLIC_SITE_URL=https://your-edgeone-site.example.com
+PUBLIC_SITE_URL=https://shguty.cn
 PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-PUBLIC_UPLOAD_ENDPOINT=https://your-edgeone-site.example.com/api/upload
+PUBLIC_UPLOAD_ENDPOINT=https://api.shguty.cn/api/upload
 ```
 
 说明：
 
-- `PUBLIC_SITE_URL` 用于 canonical、Open Graph 等公开元信息
-- `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 用于前端读取公开数据
-- `PUBLIC_UPLOAD_ENDPOINT` 指向 EdgeOne Pages API 的上传接口
+- `PUBLIC_SITE_URL`：前端正式网址，用于 canonical、分享卡片和绝对资源链接
+- `PUBLIC_SUPABASE_URL`：Supabase 项目地址
+- `PUBLIC_SUPABASE_ANON_KEY`：前端匿名 key
+- `PUBLIC_UPLOAD_ENDPOINT`：后端上传接口完整地址
 
 ## 本地开发
+
+前端：
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-默认地址是 [http://localhost:4321](http://localhost:4321)。
+默认访问 [http://localhost:4321](http://localhost:4321)。
 
-如需本地联调 `node-functions`，请先按 EdgeOne 官方文档全局安装 CLI，然后在项目根目录运行：
-
-```bash
-edgeone pages dev
-```
-
-## 构建前端
+后端本地联调：
 
 ```bash
-pnpm build
-pnpm preview
+cd vercel-api
+npm install
+npx vercel dev
 ```
 
-## 后端 API
+默认访问 [http://localhost:3000/api/health](http://localhost:3000/api/health)。
 
-EdgeOne Pages 后端已经迁移到 `node-functions`。
+## 部署顺序
 
-- `node-functions` 会自动映射到站点根路径下的 API 路由
-- 服务端共享逻辑放在 `server/edgeone-api`
-- 旧的 `examples/upload-service-node` 与 `vercel-api` 目录保留作参考
+1. 在 Vercel 新建一个前端项目，根目录使用仓库根目录，绑定 `shguty.cn`
+2. 在 Vercel 再新建一个后端项目，Root Directory 选择 `vercel-api`，绑定 `api.shguty.cn`
+3. 先给后端项目配置环境变量并成功部署
+4. 确认 `https://api.shguty.cn/api/health` 正常返回
+5. 再给前端项目配置环境变量并重新部署
 
-## 数据与后台
+## 管理后台
 
-- Supabase 表结构与策略见 `supabase/schema.sql`
-- 上传接口约定见 `docs/upload-service.md`
-- 最小后台入口仍然是 `/admin`
-- 新上传的照片默认 `is_visible = false`，需要后台审核后才会公开显示
+- 后台入口是 `/admin`
+- 后台会从 `PUBLIC_UPLOAD_ENDPOINT` 自动推导 API 根地址
+- 管理接口必须带 `x-admin-token`
+- 新上传照片默认 `is_visible = false`，需要在后台手动公开
+
+## 补充说明
+
+- `vercel-api/README.md` 里有后端项目的单独说明
+- `docs/upload-service.md` 里有完整接口和环境变量表
+- 生产环境不要把 `.env`、`.env.local`、Vercel 控制台里的密钥提交到 GitHub
