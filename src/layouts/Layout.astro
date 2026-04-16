@@ -23,6 +23,7 @@ const buildAbsoluteUrl = (path) => {
 const faviconUrl = `${import.meta.env.BASE_URL}favicon.ico`;
 const socialImageUrl = buildAbsoluteUrl(ogImage);
 const canonicalUrl = normalizedSiteUrl ? `${normalizedSiteUrl}${Astro.url.pathname}` : null;
+const shouldRegisterServiceWorker = import.meta.env.PROD;
 ---
 
 <!DOCTYPE html>
@@ -47,8 +48,8 @@ const canonicalUrl = normalizedSiteUrl ? `${normalizedSiteUrl}${Astro.url.pathna
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
 
-    <script is:inline>
-        if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    <script is:inline define:vars={{ shouldRegisterServiceWorker }}>
+        if (shouldRegisterServiceWorker && 'serviceWorker' in navigator) {
             const swCode = `
                 const CACHE_NAME = 'shiguang-v2026-final';
                 self.addEventListener('fetch', e => {
