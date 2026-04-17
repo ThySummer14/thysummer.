@@ -61,7 +61,7 @@
 
 ## 当前限制
 
-- 允许文件类型：`image/jpeg`、`image/png`、`image/webp`、`image/gif`
+- 允许文件类型：`image/jpeg`、`image/png`、`image/webp`
 - 当前上传大小上限：`15MB`
 - 新上传照片默认 `is_visible = false`
 

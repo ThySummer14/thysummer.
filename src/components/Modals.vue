@@ -9,6 +9,14 @@ import { hasSupabaseConfig, hasUploadEndpoint } from '../utils/env.js';
 import { postComment, vibrate, uploadMemory } from '../utils/core.js';
 import { getSupabaseClient } from '../utils/supabase.js';
 
+const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const rawFileLimitMb = 25;
+const uploadFileLimitMb = 15;
+const rawFileLimitBytes = rawFileLimitMb * 1024 * 1024;
+const uploadFileLimitBytes = uploadFileLimitMb * 1024 * 1024;
+const maxImageDimension = 1600;
+const compressedImageQuality = 0.8;
+
 // --- 上传信笺状态 ---
 const photoFile = ref(null);
 const photoTitle = ref('');
@@ -49,7 +57,12 @@ const getUploadErrorMessage = (error) => {
   const code = String(error?.code || '');
 
   if (code === 'INVALID_FILE_TYPE') return '只支持 jpg、png、webp 图片';
-  if (code === 'FILE_TOO_LARGE') return '图片请控制在 6MB 以内';
+  if (code === 'FILE_TOO_LARGE' || code === 'COMPRESSED_FILE_TOO_LARGE') {
+    return `图片压缩后仍超过 ${uploadFileLimitMb}MB，请换一张或裁切后再试`;
+  }
+  if (code === 'RAW_FILE_TOO_LARGE') {
+    return `原图请控制在 ${rawFileLimitMb}MB 以内，再交给系统压缩`;
+  }
   if (code === 'MISSING_FIELDS') return '标题和署名都要填写完整';
   if (code === 'INVALID_METADATA') return '标题或署名太长了，请缩短后再试';
   if (code === 'MISSING_ENV') return '上传服务环境变量还没配置完整';
@@ -68,16 +81,16 @@ const handleFileChange = (event) => {
     return;
   }
 
-  const isImage = file.type.startsWith('image/');
-  if (!isImage) {
-    if (window.showToast) window.showToast('只支持上传图片文件', 'error');
+  if (!allowedMimeTypes.has(file.type)) {
+    if (window.showToast) window.showToast('只支持 jpg、png、webp 图片', 'error');
     if (photoFile.value) photoFile.value.value = '';
     return;
   }
 
-  const maxSize = 6 * 1024 * 1024;
-  if (file.size > maxSize) {
-    if (window.showToast) window.showToast('图片请控制在 6MB 以内', 'error');
+  if (file.size > rawFileLimitBytes) {
+    if (window.showToast) {
+      window.showToast(`原图请控制在 ${rawFileLimitMb}MB 以内，再交给系统压缩`, 'error');
+    }
     if (photoFile.value) photoFile.value.value = '';
     return;
   }
@@ -97,7 +110,12 @@ async function compressImage(file) {
   try {
     const bitmap = await window.createImageBitmap(file);
     let w = bitmap.width, h = bitmap.height;
-    if (w > 1200) { h = Math.round(h * (1200 / w)); w = 1200; }
+    const longestSide = Math.max(w, h);
+    if (longestSide > maxImageDimension) {
+      const scale = maxImageDimension / longestSide;
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
 
     if (window.OffscreenCanvas) {
       const oc = new window.OffscreenCanvas(w, h);
@@ -105,13 +123,13 @@ async function compressImage(file) {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(bitmap, 0, 0, w, h);
       bitmap.close();
-      return await oc.convertToBlob({ type: 'image/webp', quality: 0.82 });
+      return await oc.convertToBlob({ type: 'image/webp', quality: compressedImageQuality });
     } else {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
       bitmap.close();
-      return new Promise(res => canvas.toBlob(res, 'image/webp', 0.82));
+      return new Promise(res => canvas.toBlob(res, 'image/webp', compressedImageQuality));
     }
   } catch (e) {
     if (import.meta.env.DEV) {
@@ -156,6 +174,18 @@ const submitPhoto = async () => {
   try {
     uploadBtnText.value = "压缩图谱...";
     const finalFile = await compressImage(file);
+
+    if (!finalFile) {
+      const error = new Error('Compressed file is empty.');
+      error.code = 'COMPRESSED_FILE_TOO_LARGE';
+      throw error;
+    }
+
+    if (finalFile.size > uploadFileLimitBytes) {
+      const error = new Error(`Compressed file exceeds ${uploadFileLimitMb}MB.`);
+      error.code = 'COMPRESSED_FILE_TOO_LARGE';
+      throw error;
+    }
 
     uploadBtnText.value = "跨越星海...";
     const insertedPhoto = await uploadMemory({
@@ -249,8 +279,15 @@ const closeIdentity = () => {
       
       <div class="modal-box" v-if="appState.isUploading">
         <h3 class="modal-title">时光信笺</h3>
-        <input type="file" ref="photoFile" accept="image/*" class="input-box file-box" :disabled="isSubmitting" @change="handleFileChange">
-        <p class="helper-text">支持常见图片格式，建议上传竖图或生活瞬间。</p>
+        <input
+          type="file"
+          ref="photoFile"
+          accept="image/jpeg,image/png,image/webp"
+          class="input-box file-box"
+          :disabled="isSubmitting"
+          @change="handleFileChange"
+        >
+        <p class="helper-text">支持 jpg、png、webp。原图可到 {{ rawFileLimitMb }}MB，系统会先压缩，最终上传需在 {{ uploadFileLimitMb }}MB 内。</p>
 
         <div v-if="uploadPreviewUrl" class="preview-card">
           <img :src="uploadPreviewUrl" alt="上传预览" class="preview-image">
