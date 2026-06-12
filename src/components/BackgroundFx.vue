@@ -48,18 +48,18 @@ onMounted(() => {
 .mote {
   position: absolute;
   bottom: -10%;
-  
+
   /* ✨ 审美升级：更浅、更柔和的晨雾浅绿 */
-  background: #AEC3B6; 
+  background: #AEC3B6;
   border-radius: 50%;
   opacity: 0;
-  
+
   /* 开启 GPU 硬件加速 */
   will-change: transform, opacity;
   animation: floatUp linear infinite;
-  
-  /* ✨ 审美升级：扩散发光半径，降低发光强度，形成“散景”感 */
-  box-shadow: 0 0 18px rgba(174, 195, 182, 0.4); 
+
+  /* ✨ 审美升级：扩散发光半径，降低发光强度，形成”散景”感 */
+  box-shadow: 0 0 18px rgba(174, 195, 182, 0.4);
 }
 
 /* 严禁操作 top/left，仅使用 transform: translate3d 防重排 */

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { appState } from '../store/state.js';
 import { hasUploadEndpoint } from '../utils/env.js';
 import { vibrate } from '../utils/core.js';
@@ -8,6 +9,25 @@ const handleSearch = (e) => {
   const value = e.target.value;
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { appState.searchQuery = value.trim(); }, 300);
+};
+
+// Tag filter
+const allTags = computed(() => {
+  const tags = new Set();
+  appState.photos.forEach(p => {
+    if (p.tags) {
+      (Array.isArray(p.tags) ? p.tags : String(p.tags).split(',')).forEach(t => {
+        const trimmed = t.trim();
+        if (trimmed) tags.add(trimmed);
+      });
+    }
+  });
+  return [...tags].sort();
+});
+
+const selectTag = (tag) => {
+  vibrate(8);
+  appState.activeTag = appState.activeTag === tag ? '' : tag;
 };
 
 const toggleMode = () => { vibrate(15); appState.currentMode = appState.currentMode === 'gallery' ? 'timeline' : 'gallery'; };
@@ -41,23 +61,31 @@ const exportData = () => {
       <h1 class="logo">拾光集</h1>
       <p class="en-poem">Time passes in silence, yet light captures its eternal echo.</p>
     </div>
-    
+
     <div class="console-capsule">
       <div class="subtitle">岁月无声，唯有拾光。</div>
-      
+
       <div class="search-wrapper">
-        <input type="text" class="search-box" placeholder="🔍 检索记忆碎片 (标题 / 作者 / 月份)" @input="handleSearch" />
+        <input type="text" class="search-box" placeholder="检索记忆碎片 — 标题 / 作者 / 月份" @input="handleSearch" />
+      </div>
+
+      <div v-if="allTags.length > 0" class="tags-row">
+        <button
+          v-for="tag in allTags" :key="tag"
+          class="tag-pill" :class="{ active: appState.activeTag === tag }"
+          @click="selectTag(tag)"
+        >{{ tag }}</button>
       </div>
 
       <div class="controls-row">
         <button class="btn-shiguang" @click="toggleMode">
-          <span v-if="appState.currentMode === 'gallery'">🕰️ 岁月模式</span>
-          <span v-else>🖼️ 画廊模式</span>
+          <span v-if="appState.currentMode === 'gallery'">时间轴</span>
+          <span v-else>画廊</span>
         </button>
         <button class="btn-shiguang primary" :disabled="!hasUploadEndpoint" @click="openUpload">
-          {{ hasUploadEndpoint ? '✨ 珍藏此刻' : '🔒 上传待配置' }}
+          {{ hasUploadEndpoint ? '珍藏' : '待配置' }}
         </button>
-        <button class="btn-shiguang" @click="exportData" title="导出备份">📦 备份记忆</button>
+        <button class="btn-shiguang" @click="exportData" title="导出备份">备份</button>
       </div>
     </div>
   </header>
@@ -87,17 +115,71 @@ const exportData = () => {
   opacity: 0.85;
 }
 
-.console-capsule { background: var(--glass-console); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 30px; max-width: 600px; margin: 0 auto; padding: 25px; box-shadow: var(--shadow-float); display: flex; flex-direction: column; gap: 20px; align-items: center; }
+.console-capsule {
+  background: var(--glass-console);
+  backdrop-filter: blur(24px) saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.05);
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-border-bright);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 25px;
+  box-shadow: var(--shadow-float), var(--glass-rim);
+  display: flex; flex-direction: column; gap: 20px; align-items: center;
+}
 .subtitle { font-size: 14px; letter-spacing: 2px; color: var(--text-muted); font-style: italic; }
 .search-wrapper { width: 100%; display: flex; justify-content: center; }
-.search-box { width: 100%; max-width: 320px; padding: 12px 20px; border: 1px solid rgba(140, 161, 146, 0.2); border-radius: 50px; background: rgba(255, 255, 255, 0.5); font-family: inherit; font-size: 14px; color: var(--text-dark); outline: none; transition: all 0.4s var(--cubic-bounce); text-align: center; }
-.search-box:focus { background: #fff; border-color: var(--accent-color); max-width: 380px; box-shadow: 0 5px 20px rgba(140, 161, 146, 0.15); }
-.controls-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-.btn-shiguang { background: white; color: var(--text-dark); border: 1px solid rgba(140, 161, 146, 0.3); padding: 10px 20px; border-radius: 50px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s var(--cubic-smooth); will-change: transform; display: flex; align-items: center; gap: 6px; }
-.btn-shiguang.primary { background: var(--accent-color); color: white; border-color: transparent; box-shadow: 0 8px 20px rgba(140, 161, 146, 0.2); }
-.btn-shiguang:hover { transform: translate3d(0, -3px, 0); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+.search-box { width: 100%; max-width: 320px; padding: 12px 20px; border: 1px solid rgba(140, 161, 146, 0.2); border-radius: 50px; background: var(--glass-surface, rgba(255, 255, 255, 0.5)); font-family: inherit; font-size: 14px; color: var(--text-dark); outline: none; transition: all 0.4s var(--cubic-bounce); text-align: center; }
+.search-box:focus { background: var(--glass-bg); border-color: var(--accent-color); max-width: 380px; box-shadow: 0 5px 20px rgba(140, 161, 146, 0.15); }
+.controls-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+.tags-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.tag-pill {
+  padding: 6px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(140, 161, 146, 0.2);
+  background: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--cubic-smooth);
+}
+.tag-pill.active {
+  background: var(--accent-color);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(140, 161, 146, 0.25);
+}
+.tag-pill:hover:not(.active) { border-color: var(--accent-color); color: var(--accent-color); }
+.btn-shiguang {
+  background: var(--glass-surface, rgba(255, 255, 255, 0.22));
+  color: var(--text-dark);
+  border: 1px solid rgba(140, 161, 146, 0.2);
+  padding: 10px 22px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--cubic-smooth);
+  will-change: transform;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-shiguang.primary {
+  background: var(--accent-color);
+  color: white;
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(140, 161, 146, 0.25);
+}
+.btn-shiguang:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 6px 16px rgba(140, 161, 146, 0.12); }
 .btn-shiguang:active { transform: translate3d(0, 1px, 0) scale(0.97); }
-.btn-shiguang:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-shiguang:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ✨ 移动端深度适配 */
 @media (max-width: 600px) {

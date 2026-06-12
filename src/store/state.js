@@ -6,16 +6,17 @@ import { reactive, computed } from 'vue';
 
 export const appState = reactive({
     // 基础数据源
-    photos: [],             
-    currentMode: 'gallery', 
-    searchQuery: '',        
-    
+    photos: [],
+    currentMode: 'gallery',
+    searchQuery: '',
+    activeTag: '',          // 标签筛选
+
     // 全局模态框状态 (状态驱动UI)
     isUploading: false,         // 时光信笺 (上传弹窗)
     showIdentityModal: false,   // 时光旅人 (身份确认弹窗)
-    
+
     // 动作暂存区 (解决未登录时评论被中断的问题)
-    pendingCommentAction: null  
+    pendingCommentAction: null
 });
 
 export const prependPhoto = (photo) => {
@@ -25,15 +26,28 @@ export const prependPhoto = (photo) => {
 
 // 核心内存检索逻辑
 export const filteredPhotos = computed(() => {
-    const q = appState.searchQuery.toLowerCase().trim();
-    if (!q) return appState.photos;
+    let result = appState.photos;
 
-    return appState.photos.filter(p => {
+    // Tag filter
+    const tag = appState.activeTag.trim();
+    if (tag) {
+        result = result.filter(p => {
+            if (!p.tags) return false;
+            const tags = Array.isArray(p.tags) ? p.tags : String(p.tags).split(',');
+            return tags.some(t => t.trim() === tag);
+        });
+    }
+
+    // Search filter
+    const q = appState.searchQuery.toLowerCase().trim();
+    if (!q) return result;
+
+    return result.filter(p => {
         const d = new Date(p.created_at);
         const monthStr = `${d.getFullYear()}年 ${String(d.getMonth() + 1).padStart(2, '0')}月`;
-        
-        return p.title.toLowerCase().includes(q) || 
-               p.author.toLowerCase().includes(q) || 
+
+        return p.title.toLowerCase().includes(q) ||
+               p.author.toLowerCase().includes(q) ||
                monthStr.includes(q);
     });
 });

@@ -5,7 +5,8 @@
  */
 import BackgroundFx from '../components/BackgroundFx.vue';
 import Toast from '../components/Toast.vue';
-// ✨ 修复 1：已经彻底删除了 import MusicPlayer 的引入
+import Lightbox from '../components/Lightbox.vue';
+import BackToTop from '../components/BackToTop.vue';
 import Modals from '../components/Modals.vue';
 import { publicEnv } from '../utils/env.js';
 
@@ -30,7 +31,7 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#8CA192" />
@@ -81,29 +82,71 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
 
     <style is:global>
         :root {
-            --bg-base: #F7F9F8; 
-            --text-dark: #2C3631; 
-            --text-muted: #8B9992; 
-            --accent-color: #8CA192; 
+            /* === Color Palette === */
+            --bg-base: #F7F9F8;
+            --bg-subtle: #E8EDE9;
+            --text-dark: #2C3631;
+            --text-muted: #8B9992;
+            --accent-color: #8CA192;
             --accent-hover: #7A9080;
-            --glass-bg: rgba(255, 255, 255, 0.75);
-            --glass-console: rgba(255, 255, 255, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.9);
-            --shadow-soft: 0 12px 35px rgba(0,0,0,0.04);
-            --shadow-float: 0 25px 50px rgba(140, 161, 146, 0.15);
+            --border-light: #E8EDE9;
+
+            /* === Glass System (3-tier depth) === */
+            --glass-deep: rgba(255, 255, 255, 0.06);
+            --glass-float: rgba(255, 255, 255, 0.12);
+            --glass-surface: rgba(255, 255, 255, 0.22);
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-console: rgba(255, 255, 255, 0.58);
+            --glass-border: rgba(255, 255, 255, 0.35);
+            --glass-border-bright: rgba(255, 255, 255, 0.55);
+            --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+            /* === Shadows === */
+            --shadow-soft: 0 12px 35px rgba(0, 0, 0, 0.04);
+            --shadow-float: 0 25px 50px rgba(140, 161, 146, 0.12);
+            --shadow-glow: 0 8px 32px rgba(140, 161, 146, 0.18);
+
+            /* === Animation Tokens === */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
             --cubic-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
             --cubic-smooth: cubic-bezier(0.25, 1, 0.5, 1);
+            --duration-fast: 150ms;
+            --duration-normal: 300ms;
+            --duration-slow: 500ms;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Noto Serif SC', serif;
-            background: linear-gradient(135deg, var(--bg-base) 0%, #E8EDE9 100%) fixed;
-            color: var(--text-dark); 
-            min-height: 100vh; 
+            background-color: var(--bg-base);
+            background-image: linear-gradient(135deg, var(--bg-base) 0%, var(--bg-subtle) 100%);
+            background-attachment: fixed;
+            color: var(--text-dark);
+            min-height: 100vh;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
+            transition: background-color var(--duration-slow) ease, color var(--duration-slow) ease;
+        }
+
+        /* UI elements use system sans-serif — buttons, inputs, labels, badges */
+        button, input, select, textarea,
+        .btn-shiguang, .controls-row, .search-box,
+        .comment-input-box, .time-badge, .subtitle,
+        .card-author, .comment-meta, .field-meta,
+        .helper-text, .modal-desc {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        }
+
+        /* === Reduced Motion === */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>
@@ -115,6 +158,8 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
     </div>
 
     <Toast client:load />
+    <Lightbox client:load />
+    <BackToTop client:load />
     <Modals client:load />
     </body>
 </html>

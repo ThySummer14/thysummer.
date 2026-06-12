@@ -384,15 +384,15 @@ const closeIdentity = () => {
   width: 100%;
   padding: 15px;
   margin-bottom: 18px;
-  border: 1px solid #E8EDE9;
+  border: 1px solid var(--border-light, #E8EDE9);
   border-radius: 14px;
-  background: #F7F9F8;
+  background: var(--bg-base, #F7F9F8);
   text-align: center;
   outline: none;
   font-family: inherit;
   font-size: 14px;
-  transition: all 0.3s ease;
-  color: #2C3631;
+  transition: all var(--duration-normal, 300ms) ease;
+  color: var(--text-dark, #2C3631);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -446,7 +446,7 @@ const closeIdentity = () => {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: var(--duration-normal, 300ms) var(--cubic-bounce, cubic-bezier(0.34, 1.56, 0.64, 1));
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }

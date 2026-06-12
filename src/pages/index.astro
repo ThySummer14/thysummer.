@@ -6,6 +6,7 @@
 import Layout from '../layouts/Layout.astro';
 import HeaderConsole from '../components/HeaderConsole.vue';
 import PhotoGrid from '../components/PhotoGrid.vue';
+import SiteFooter from '../components/SiteFooter.vue';
 ---
 
 <Layout
@@ -15,4 +16,6 @@ import PhotoGrid from '../components/PhotoGrid.vue';
     <HeaderConsole client:load />
 
     <PhotoGrid client:load />
+
+    <SiteFooter client:load />
 </Layout>

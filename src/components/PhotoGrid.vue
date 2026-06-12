@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
     <audio id="bgMusic" loop preload="auto">
       <source :src="musicUrl" type="audio/mpeg">
     </audio>
-    <div id="musicBtn" class="music-disk" @click="toggleMusic"></div>
+    <div id="musicBtn" class="music-disk" @click="toggleMusic" role="button" aria-label="播放/暂停背景音乐"></div>
 
     <div v-if="!hasSupabaseConfig" class="empty-state empty-hint">
       <strong>站点还差一步配置</strong>
@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 <style scoped>
 #main-container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 20px 40px 100px; }
 
-.hardware-accelerated { transform: translateZ(0); will-change: transform; }
+.hardware-accelerated { transform: translateZ(0); }
 
 .true-waterfall { display: flex; align-items: flex-start; gap: 30px; }
 .waterfall-col { flex: 1; display: flex; flex-direction: column; }
